@@ -1,0 +1,8 @@
+{
+  "block.minecart.obsidian_new": "Да",
+  "item.minecart.locomotive": "Локомотив",
+  "item.minecart.wagon": "Тележка",
+  "item.minecart.clamp": "ЖД ключ",
+  "key.minecart.example_key": "Тестовая горячая клавиша",
+  "entity.minecart.locomotive": "Лакаматев"
+}
