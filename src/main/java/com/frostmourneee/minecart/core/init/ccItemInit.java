@@ -24,6 +24,6 @@ public final class ccItemInit {
     public static final RegistryObject<WagonItem> WAGON_ITEM = ITEMS.register("wagon",
             () -> new WagonItem(new Item.Properties().tab(CreativeModeTab.TAB_TRANSPORTATION).stacksTo(1)));
 
-    public  static final RegistryObject<ClampItem> CLAMP = ITEMS.register("clamp",
+    public static final RegistryObject<ClampItem> CLAMP = ITEMS.register("clamp",
             () -> new ClampItem(new Item.Properties().tab(CreativeModeTab.TAB_TRANSPORTATION).stacksTo(1)));
 }

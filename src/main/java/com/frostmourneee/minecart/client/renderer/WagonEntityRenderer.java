@@ -179,7 +179,7 @@ public class WagonEntityRenderer extends EntityRenderer<WagonEntity> {
     @Override
     public ResourceLocation getTextureLocation(WagonEntity wagonEntity) {
         if (wagonEntity.getEntityData().get(WagonEntity.DATA_DEBUG_MODE)) {
-            return wagonEntity.getEntityData().get(WagonEntity.DATA_CLAMP_OR_NOT) ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
-        } else return wagonEntity.getEntityData().get(WagonEntity.DATA_CLAMP_OR_NOT) ? TEXTURE_GREEN : TEXTURE_RED;
+            return wagonEntity.getEntityData().get(WagonEntity.DATA_FRONTCART_EXISTS) ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
+        } else return wagonEntity.getEntityData().get(WagonEntity.DATA_FRONTCART_EXISTS) ? TEXTURE_GREEN : TEXTURE_RED;
     }
 }
