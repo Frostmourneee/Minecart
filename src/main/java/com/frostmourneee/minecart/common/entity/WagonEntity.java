@@ -46,7 +46,7 @@ public class WagonEntity extends AbstractCart {
     public void tick() {
         super.tick();
 
-        if (this.hasFrontCart) {
+        if (frontConnection.isConnected()) {
             clampProcessing();
         }
     }
@@ -69,8 +69,8 @@ public class WagonEntity extends AbstractCart {
 
         if (!level.isClientSide) {
             if (this.canBeClamped(player, itemStack)) {
-                if (this.hasFrontCart) {
-                    this.frontCart.resetBack();
+                if (frontConnection.isConnected()) {
+                    frontConnection.getCart().resetBack();
                     this.resetFront();
                 } else {
                     this.tryingToClamp();
@@ -96,12 +96,12 @@ public class WagonEntity extends AbstractCart {
     }
 
     public void clampProcessing() {
-
-        if (this.frontCart != null) {
-            this.poseConfiguration(Direction.NORTH, this.frontCart, 0, 1);
-            this.poseConfiguration(Direction.SOUTH, this.frontCart, 0, -1);
-            this.poseConfiguration(Direction.EAST, this.frontCart, -1, 0);
-            this.poseConfiguration(Direction.WEST, this.frontCart, 1, 0);
+        var frontCart = frontConnection.getCart();
+        if (frontCart != null) {
+            this.poseConfiguration(Direction.NORTH, frontCart, 0, 1);
+            this.poseConfiguration(Direction.SOUTH, frontCart, 0, -1);
+            this.poseConfiguration(Direction.EAST, frontCart, -1, 0);
+            this.poseConfiguration(Direction.WEST, frontCart, 1, 0);
         }
     }
 
@@ -112,7 +112,7 @@ public class WagonEntity extends AbstractCart {
             if (this.getDirection().equals(cart.getDirection()) && ccUtil.bothUpOrDownOrForward(this, cart)) {
                 if (ccUtil.goesFlat(this) && ccUtil.goesFlat(cart) && !ccUtil.isRotating(this)) {
                     if (this.getLocomotive() != null && !ccUtil.isStopped(this.getLocomotive())) this.setDeltaMovement(cart.deltaMovement);
-                    if (this.getLocomotive() == null && !ccUtil.isStopped(this.frontCart)) this.setDeltaMovement(cart.deltaMovement);
+                    if (this.getLocomotive() == null && !ccUtil.isStopped(this.frontConnection.getCart())) this.setDeltaMovement(cart.deltaMovement);
                     this.setPos(cart.position().add(i1 * 1.625D, 0.0D, i3 * 1.625D));
                 }
                 else if (ccUtil.goesUpper(cart)) {
@@ -125,11 +125,11 @@ public class WagonEntity extends AbstractCart {
             else {
                 if (cart.deltaMovement.length() > 1.0D) {
                     if (this.getLocomotive() != null && !ccUtil.isStopped(this.getLocomotive())) this.setDeltaMovement(-i1, 0.0D, -i3);
-                    if (this.getLocomotive() == null && !ccUtil.isStopped(this.frontCart)) this.setDeltaMovement(-i1, 0.0D, -i3);
+                    if (this.getLocomotive() == null && !ccUtil.isStopped(this.frontConnection.getCart())) this.setDeltaMovement(-i1, 0.0D, -i3);
                 }
                 else {
                     if (this.getLocomotive() != null && !ccUtil.isStopped(this.getLocomotive())) this.setDeltaMovement(-i1, 0.0D, -i3 * cart.deltaMovement.length());
-                    if (this.getLocomotive() == null && !ccUtil.isStopped(this.frontCart)) this.setDeltaMovement(-i1, 0.0D, -i3 * cart.deltaMovement.length());
+                    if (this.getLocomotive() == null && !ccUtil.isStopped(this.frontConnection.getCart())) this.setDeltaMovement(-i1, 0.0D, -i3 * cart.deltaMovement.length());
                 }
             }
         }
@@ -137,10 +137,10 @@ public class WagonEntity extends AbstractCart {
     @Override
     public void setDeltaMovement(@NotNull Vec3 vec) {
         if (Math.abs(this.deltaMovement.horizontalDistance()) < 1.0E-2) {
-            if (this.hasFrontCart && Math.abs(vec.horizontalDistance()) < 51.0E-3) this.deltaMovement = Vec3.ZERO;
+            if (frontConnection.isConnected() && Math.abs(vec.horizontalDistance()) < 51.0E-3) this.deltaMovement = Vec3.ZERO;
             else this.deltaMovement = vec;
         } else {
-            if (this.hasFrontCart && Math.abs(vec.horizontalDistance()) < 2.0E-2) this.deltaMovement = Vec3.ZERO;
+            if (frontConnection.isConnected() && Math.abs(vec.horizontalDistance()) < 2.0E-2) this.deltaMovement = Vec3.ZERO;
             else this.deltaMovement = vec;
         }
     }
@@ -151,7 +151,7 @@ public class WagonEntity extends AbstractCart {
     }
 
     public void spawnAfterCartLeaving() {
-        if (this.hasFrontCart && this.getPassengers().isEmpty()) {
+        if (frontConnection.isConnected() && this.getPassengers().isEmpty()) {
             AABB miniBox;
             miniBox = this.getBoundingBox().deflate(0.1D, 0.0F, 0.1D);
 
