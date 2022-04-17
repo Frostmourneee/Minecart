@@ -488,22 +488,36 @@ public abstract class AbstractCart extends AbstractMinecart {
         this.entityData.set(DATA_HORIZONTAL_ROTATION_ANGLE, this.horAngle);
         this.vertAngle = compoundTag.getFloat("VertAngle");
         this.entityData.set(DATA_VERTICAL_ROTATION_ANGLE, this.vertAngle);
+        this.hasFrontCart = compoundTag.getBoolean("FrontCartExists");
+        this.entityData.set(DATA_FRONTCART_EXISTS, hasFrontCart);
+        this.hasBackCart = compoundTag.getBoolean("BackCartExists");
+        this.entityData.set(DATA_BACKCART_EXISTS, hasBackCart);
 
-        if (compoundTag.getBoolean("BackCartExists")) {
-            this.hasBackCart = true;
+        if (hasBackCart) {
             int[] cartPos;
             cartPos = compoundTag.getIntArray("BackCartExistsPos");
             this.posOfBackCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
+
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(this.posOfBackCart));
+            if (!rangeCart.isEmpty()) {
+                AbstractCart backCart = rangeCart.get(0);
+                backCart.connectFront(this);
+                this.connectBack(backCart);
+            }
         }
 
-        if (compoundTag.getBoolean("FrontCartExists")) {
-            this.hasFrontCart = true;
+        if (hasFrontCart) {
             int[] cartPos;
             cartPos = compoundTag.getIntArray("FrontCartExistsPos");
             this.posOfFrontCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
-        }
 
-        this.cartsRestoreAfterRestart();
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(this.posOfFrontCart));
+            if (!rangeCart.isEmpty()) {
+                AbstractCart frontCart = rangeCart.get(0);
+                frontCart.connectBack(this);
+                this.connectFront(frontCart);
+            }
+        }
     } //TODO remove debug
     public void saveNearCartData(AbstractCart cart, CompoundTag compoundTag, String name, EntityDataAccessor<Boolean> accessor) {
         if (this.entityData.get(accessor) && cart != null) {
@@ -515,25 +529,6 @@ public abstract class AbstractCart extends AbstractMinecart {
             compoundTag.putIntArray(name + "Pos", cartPos);
         } else {
             compoundTag.putBoolean(name, false);
-        }
-    }
-    public void cartsRestoreAfterRestart() {
-        if (this.hasBackCart) {
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(this.posOfBackCart));
-            if (!rangeCart.isEmpty()) {
-                AbstractCart backCart = rangeCart.get(0);
-                backCart.connectFront(this);
-                this.connectBack(backCart);
-            }
-        }
-
-        if (this.hasFrontCart) {
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(this.posOfFrontCart));
-            if (!rangeCart.isEmpty()) {
-                AbstractCart frontCart = rangeCart.get(0);
-                frontCart.connectBack(this);
-                this.connectFront(frontCart);
-            }
         }
     }
 

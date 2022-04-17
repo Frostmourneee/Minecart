@@ -3,6 +3,7 @@ package com.frostmourneee.minecart.client.renderer;
 import com.frostmourneee.debugging_minecart.core.dmUtil;
 import com.frostmourneee.minecart.client.renderer.model.DebugWagonModel;
 import com.frostmourneee.minecart.client.renderer.model.WagonEntityModel;
+import com.frostmourneee.minecart.common.entity.AbstractCart;
 import com.frostmourneee.minecart.common.entity.WagonEntity;
 import com.frostmourneee.minecart.minecart;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -16,11 +17,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
-import static com.frostmourneee.minecart.common.entity.WagonEntity.DATA_HORIZONTAL_ROTATION_ANGLE;
-import static com.frostmourneee.minecart.common.entity.WagonEntity.DATA_VERTICAL_ROTATION_ANGLE;
+import static com.frostmourneee.minecart.common.entity.AbstractCart.*;
 
 public class WagonEntityRenderer extends EntityRenderer<WagonEntity> {
 
@@ -103,7 +104,7 @@ public class WagonEntityRenderer extends EntityRenderer<WagonEntity> {
     //============================================TECHNICAL METHODS====================================================
 
     public void debugMode (WagonEntity cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
-        if (cart.getEntityData().get(WagonEntity.DATA_DEBUG_MODE))
+        if (cart.getEntityData().get(DATA_DEBUG_MODE))
             dmUtil.renderVisibleIndicator(Blocks.REDSTONE_BLOCK.defaultBlockState(), poseStack, buffer, int6);
     }
 
@@ -166,7 +167,7 @@ public class WagonEntityRenderer extends EntityRenderer<WagonEntity> {
     }
 
     public void buffering(WagonEntity cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
-        if (cart.getEntityData().get(WagonEntity.DATA_DEBUG_MODE)) {
+        if (cart.getEntityData().get(DATA_DEBUG_MODE)) {
             VertexConsumer vertexconsumer = buffer.getBuffer(this.debugModel.renderType(this.getTextureLocation(cart)));
             this.debugModel.renderToBuffer(poseStack, vertexconsumer, int6, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
         } else {
@@ -177,9 +178,9 @@ public class WagonEntityRenderer extends EntityRenderer<WagonEntity> {
     }
 
     @Override
-    public ResourceLocation getTextureLocation(WagonEntity wagonEntity) {
-        if (wagonEntity.getEntityData().get(WagonEntity.DATA_DEBUG_MODE)) {
-            return wagonEntity.getEntityData().get(WagonEntity.DATA_FRONTCART_EXISTS) ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
-        } else return wagonEntity.getEntityData().get(WagonEntity.DATA_FRONTCART_EXISTS) ? TEXTURE_GREEN : TEXTURE_RED;
+    public @NotNull ResourceLocation getTextureLocation(WagonEntity wagonEntity) {
+        if (wagonEntity.getEntityData().get(DATA_DEBUG_MODE)) {
+            return wagonEntity.getEntityData().get(DATA_FRONTCART_EXISTS) ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
+        } else return wagonEntity.getEntityData().get(DATA_FRONTCART_EXISTS) ? TEXTURE_GREEN : TEXTURE_RED;
     }
 }
