@@ -56,10 +56,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
     }
     public void horRotation(AbstractCart cart, PoseStack poseStack) {
         if (alpha.size() == 3) alpha.remove(0);
-        //System.out.println("before alpha "+ alpha.get(alpha.size() - 1) + "; straight " + straightAngle + "; horAngle " + cart.horAngle);
         findHorizontalAngle(cart);
-        //System.out.println("after alpha "+ alpha.get(alpha.size() - 1) + "; straight " + straightAngle + "; horAngle " + cart.horAngle);
-        //System.out.println(" ");
 
         if (cart.deltaMovement.length() != 0.0F) cart.setYRot(-cart.horAngle - 90.0F);
         poseStack.mulPose(Vector3f.YP.rotationDegrees(cart.horAngle)); //BASIS FOR COORDINATE SYSTEM
@@ -105,7 +102,6 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         float f1 = (((float)(i >> 20 & 7L) + 0.5F) / 8.0F - 0.5F) * 0.004F;
         float f2 = (((float)(i >> 24 & 7L) + 0.5F) / 8.0F - 0.5F) * 0.004F;
         poseStack.translate(f, f1, f2);
-        System.out.println(float2);
         double d0 = Mth.lerp(float2, cart.xOld, cart.getX());
         double d1 = Mth.lerp(float2, cart.yOld, cart.getY());
         double d2 = Mth.lerp(float2, cart.zOld, cart.getZ());

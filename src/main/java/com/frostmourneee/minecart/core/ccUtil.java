@@ -95,7 +95,7 @@ public class ccUtil {
         return cart.xOld == cart.getX() && cart.zOld == cart.getZ();
     }
 
-    public static boolean isRotating(AbstractCart cart) { //HERE WEARE!
+    public static boolean isRotating(AbstractCart cart) {
         BlockPos blockPos = cart.getOnPos().above();
         BlockState blockState = cart.level.getBlockState(blockPos);
 
