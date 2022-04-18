@@ -1,12 +1,8 @@
 package com.frostmourneee.minecart.core;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.texture.OverlayTexture;
+import com.frostmourneee.minecart.common.entity.AbstractCart;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -19,7 +15,7 @@ public class ccUtil {
 
     public ccUtil() {}
 
-    public static <CartType extends AbstractMinecart> boolean goesUpper(CartType cart) {
+    public static boolean goesUpper(AbstractCart cart) {
         BlockPos blockPosBelow = new BlockPos(blockPosToVec3(cart.getOnPos()));
         BlockPos blockPosUp = new BlockPos(blockPosToVec3(cart.getOnPos().above()));
         BlockState blockStateBelow = cart.level.getBlockState(blockPosBelow);
@@ -31,24 +27,24 @@ public class ccUtil {
         else return false;
     }
 
-    public static <CartType extends AbstractMinecart> boolean directionsProcessing(Vec3 delta, BlockState blockState, BlockPos blockPos, CartType cart) {
-        if (anyRail(blockState)) {
+    public static boolean directionsProcessing(Vec3 delta, BlockState blockState, BlockPos blockPos, AbstractCart cart) {
+        if (isRail(blockState)) {
             if (anyRailShape(blockState, blockPos, cart).isAscending()) {
                 if (delta.x > 0 && delta.z == 0) {
                     BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(1.0D, 1.0D, 0.0D)));
-                    return anyRail(blockStateFront);
+                    return isRail(blockStateFront);
                 }
                 if (delta.x < 0 && delta.z == 0) {
                     BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(-1.0D, 1.0D, 0.0D)));
-                    return anyRail(blockStateFront);
+                    return isRail(blockStateFront);
                 }
                 if (delta.z > 0 && delta.x == 0) {
                     BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(0.0D, 1.0D, 1.0D)));
-                    return anyRail(blockStateFront);
+                    return isRail(blockStateFront);
                 }
                 if (delta.z < 0 && delta.x == 0) {
                     BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(0.0D, 1.0D, -1.0D)));
-                    return anyRail(blockStateFront);
+                    return isRail(blockStateFront);
                 }
             }
         }
@@ -56,60 +52,60 @@ public class ccUtil {
         return false;
     }
 
-    public static <CartType extends AbstractMinecart> boolean goesFlat(CartType cart) {
+    public static boolean goesFlat(AbstractCart cart) {
         BlockPos blockPos = cart.blockPosition();
         BlockState blockState = cart.level.getBlockState(blockPos);
 
-        if (anyRail(blockState)) {
+        if (isRail(blockState)) {
             return !anyRailShape(blockState, blockPos, cart).isAscending();
         }
         else return false;
     }
 
-    public static <CartType extends AbstractMinecart> boolean bothUpOrDownOrForward(CartType backCart, CartType frontCart) {
+    public static boolean bothUpOrDownOrForward(AbstractCart backCart, AbstractCart frontCart) {
 
         BlockPos blockPos = new BlockPos(0.5D * (backCart.getX() + frontCart.getX()), 0.5D * (backCart.getY() + frontCart.getY()), 0.5D * (backCart.getZ() + frontCart.getZ()));
         BlockState blockState = backCart.level.getBlockState(blockPos);
         if (goesFlat(backCart) && goesFlat(frontCart) && bothOnOneLine(backCart, frontCart)) return true;
         else if (goesFlat(backCart) || goesFlat(frontCart)) return false;
-        else if (goesUpper(backCart) && goesUpper(frontCart) && anyRail(blockState) && anyRailShape(blockState, blockPos, backCart).isAscending())
+        else if (goesUpper(backCart) && goesUpper(frontCart) && isRail(blockState) && anyRailShape(blockState, blockPos, backCart).isAscending())
             return true;
-        else if (!goesUpper(backCart) && !goesUpper(frontCart) && anyRail(blockState) && anyRailShape(blockState, blockPos, backCart).isAscending())
+        else if (!goesUpper(backCart) && !goesUpper(frontCart) && isRail(blockState) && anyRailShape(blockState, blockPos, backCart).isAscending())
             return true;
 
         else return false;
     }
 
-    public static <CartType extends AbstractMinecart> boolean bothOnOneLine(CartType backCart, CartType frontCart) {
+    public static boolean bothOnOneLine(AbstractCart backCart, AbstractCart frontCart) {
         return Math.abs(backCart.getY() - frontCart.getY()) < 1.0E-4
                 && (Math.abs(backCart.getX() - frontCart.getX()) < 1.0E-4 || Math.abs(backCart.getZ() - frontCart.getZ()) < 1.0E-4);
     }
 
-    public static <CartType extends AbstractMinecart> boolean zeroDeltaMovement(CartType cart) {
+    public static boolean zeroDeltaMovement(AbstractCart cart) {
         return Math.abs(cart.getDeltaMovement().x) < 1.0E-3 && Math.abs(cart.getDeltaMovement().y) < 1.0E-3
                 && Math.abs(cart.getDeltaMovement().z) < 1.0E-3;
     }
 
-    public static <CartType extends AbstractMinecart> boolean zeroDeltaMovementBigIndent(CartType cart) {
+    public static boolean zeroDeltaMovementBigIndent(AbstractCart cart) {
         return Math.abs(cart.getDeltaMovement().x) < 5.0E-1 && Math.abs(cart.getDeltaMovement().y) < 5.0E-1
                 && Math.abs(cart.getDeltaMovement().z) < 5.0E-1;
     }
 
-    public static <CartType extends AbstractMinecart> boolean isStopped(CartType cart) {
+    public static boolean isStopped(AbstractCart cart) {
         return cart.xOld == cart.getX() && cart.zOld == cart.getZ();
     }
 
-    public static <CartType extends AbstractMinecart> boolean isRotating(CartType cart) {
+    public static boolean isRotating(AbstractCart cart) { //HERE WEARE!
         BlockPos blockPos = cart.getOnPos().above();
         BlockState blockState = cart.level.getBlockState(blockPos);
 
-        if (anyRail(blockState)) {
+        if (isRail(blockState)) {
             RailShape shape = anyRailShape(blockState, blockPos, cart);
             return railIsRotating(shape);
         } else return false;
     }
 
-    public static boolean anyRail(BlockState blockState) {
+    public static boolean isRail(BlockState blockState) {
         return blockState.is(Blocks.RAIL) || blockState.is(Blocks.POWERED_RAIL) || blockState.is(Blocks.ACTIVATOR_RAIL) || blockState.is(Blocks.DETECTOR_RAIL);
     }
 
@@ -117,7 +113,7 @@ public class ccUtil {
         return shape.equals(RailShape.NORTH_EAST) || shape.equals(RailShape.NORTH_WEST) || shape.equals(RailShape.SOUTH_EAST) || shape.equals(RailShape.SOUTH_WEST);
     }
 
-    public static <CartType extends AbstractMinecart> RailShape anyRailShape(BlockState blockState, BlockPos blockPos, CartType cart) {
+    public static RailShape anyRailShape(BlockState blockState, BlockPos blockPos, AbstractCart cart) {
         return ((BaseRailBlock)blockState.getBlock())
                 .getRailDirection(blockState, cart.level, blockPos, cart);
     }
@@ -126,10 +122,10 @@ public class ccUtil {
         ArrayList<BlockPos> tmp = new ArrayList<>();
 
         tmp.add(blockPos.relative(Direction.UP));
-        tmp.add(blockPos.relative(Direction.NORTH));
         tmp.add(blockPos.relative(Direction.EAST));
-        tmp.add(blockPos.relative(Direction.SOUTH));
+        tmp.add(blockPos.relative(Direction.NORTH));
         tmp.add(blockPos.relative(Direction.WEST));
+        tmp.add(blockPos.relative(Direction.SOUTH));
         tmp.add(blockPos.relative(Direction.DOWN));
 
         return tmp;

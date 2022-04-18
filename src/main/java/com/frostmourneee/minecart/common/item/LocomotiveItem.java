@@ -34,7 +34,7 @@ public class LocomotiveItem extends Item {
 
             if (!blockstate.is(BlockTags.RAILS)) {
                 if (!blockstate.isAir() || !level.getBlockState(blockpos.below()).is(BlockTags.RAILS)) {
-                    return this.defaultDispenseItemBehavior.dispense(blockSource, itemStack);
+                    return defaultDispenseItemBehavior.dispense(blockSource, itemStack);
                 }
             }
 
