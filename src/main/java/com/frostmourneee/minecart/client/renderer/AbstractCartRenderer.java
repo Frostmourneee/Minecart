@@ -21,7 +21,7 @@ import static com.frostmourneee.minecart.common.entity.AbstractCart.DATA_VERTICA
 public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> {
 
     public ArrayList<Float> alpha = new ArrayList<>();
-    public float straightAngle;
+    public float straightAngle = 0.0F;
 
     public AbstractCartRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -58,12 +58,12 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         if (alpha.size() == 3) alpha.remove(0);
         findHorizontalAngle(cart);
 
-        if (cart.deltaMovement.length() != 0.0F) cart.setYRot(-cart.horAngle - 90.0F);
+        if (!cart.isStopped()) cart.setYRot(-cart.horAngle - 90.0F);
         poseStack.mulPose(Vector3f.YP.rotationDegrees(cart.horAngle)); //BASIS FOR COORDINATE SYSTEM
         cart.getEntityData().set(DATA_HORIZONTAL_ROTATION_ANGLE, cart.horAngle);
     }
     public void findHorizontalAngle(AbstractCart cart) {
-        if (cart.deltaMovement.length() == 0) { //STAYING
+        if (cart.isStopped()) { //STAYING
             switch (cart.getDirection()) {
                 case EAST -> straightAngle = 0.0F;
                 case NORTH -> straightAngle = 90.0F;
@@ -74,14 +74,14 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         }
         else { //MOVING
             if (alpha.get(alpha.size() - 1) == -90.0F) { //NORTH-SOUTH MOVEMENT
-                if (cart.deltaMovement.z < 0) straightAngle = 90.0F;
-                if (cart.deltaMovement.z > 0) straightAngle = 270.0F;
+                if (cart.delta.z < 0) straightAngle = 90.0F;
+                if (cart.delta.z > 0) straightAngle = 270.0F;
 
                 cart.horAngle = straightAngle;
             }
             else if (alpha.get(alpha.size() - 1) == 180.0F) { //WEST-EAST Movement
-                if (cart.deltaMovement.x < 0) straightAngle = 180.F;
-                if (cart.deltaMovement.x > 0) straightAngle = 0.0F;
+                if (cart.delta.x < 0) straightAngle = 180.F;
+                if (cart.delta.x > 0) straightAngle = 0.0F;
 
                 cart.horAngle = straightAngle;
             }

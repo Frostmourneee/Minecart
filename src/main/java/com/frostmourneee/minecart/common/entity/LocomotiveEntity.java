@@ -1,7 +1,7 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
-import com.frostmourneee.minecart.core.ccUtil;
+import com.frostmourneee.minecart.ccUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -36,9 +36,9 @@ public class LocomotiveEntity extends AbstractCart {
 
     public static final EntityDataAccessor<Boolean> DATA_ID_FUEL = SynchedEntityData.defineId(LocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
 
-    private int fuel;
-    public double xPush;
-    public double zPush;
+    private int fuel = 0;
+    public double xPush = 0.0D;
+    public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
 
@@ -81,7 +81,7 @@ public class LocomotiveEntity extends AbstractCart {
             if (!player.getAbilities().instabuild) {
                 itemstack.shrink(1);
             }
-            fuel += 72; //TODO change
+            fuel += 3600; //TODO change
         }
 
         if (fuel > 0) {
@@ -105,7 +105,7 @@ public class LocomotiveEntity extends AbstractCart {
     public void addFuelByHopper(int plusFuel) {
         BlockPos thisBlockPos = new BlockPos(position());
 
-        for (BlockPos blockPos : ccUtil.nearsBlockPos(thisBlockPos)) {
+        for (BlockPos blockPos : nearsBlockPos(thisBlockPos)) {
             BlockState blockState = level.getBlockState(blockPos);
 
             if (blockState.is(Blocks.HOPPER)) {
@@ -115,9 +115,8 @@ public class LocomotiveEntity extends AbstractCart {
 
                     HopperBlockEntity hopperBlockEntity = null;
                     Vec3 vecToLocomotive = new Vec3(rangeNewMinecartEntities.get(0).getX() - (blockPos.getX() + 0.5D), rangeNewMinecartEntities.get(0).getY() - blockPos.getY(), rangeNewMinecartEntities.get(0).getZ() - (blockPos.getZ() + 0.5D));
-                    System.out.println(vecToLocomotive);
-                    System.out.println(ccUtil.vecToDirection(vecToLocomotive));
-                    if (ccUtil.vecToDirection(vecToLocomotive) != null) if (ccUtil.isRail(level.getBlockState(blockPos.relative(ccUtil.vecToDirection(vecToLocomotive)))))
+
+                    if (ccUtil.vecToDirection(vecToLocomotive) != null) if (isRail(level.getBlockState(blockPos.relative(ccUtil.vecToDirection(vecToLocomotive)))))
                         hopperBlockEntity = HopperRotation(ccUtil.vecToDirection(vecToLocomotive), blockPos);
 
                     if (hopperBlockEntity != null && hasFuelItem(hopperBlockEntity, i)) {
@@ -126,22 +125,22 @@ public class LocomotiveEntity extends AbstractCart {
                             hopperBlockEntity.getItem(i).shrink(1);
 
                             switch (getDirection()) {
-                                case NORTH:
+                                case NORTH -> {
                                     xPush = 0.0D;
                                     zPush = -1.0D;
-                                    break;
-                                case EAST:
+                                }
+                                case EAST -> {
                                     xPush = 1.0D;
                                     zPush = 0.0D;
-                                    break;
-                                case SOUTH:
+                                }
+                                case SOUTH -> {
                                     xPush = 0.0D;
                                     zPush = 1.0D;
-                                    break;
-                                case WEST:
+                                }
+                                case WEST -> {
                                     xPush = -1.0D;
                                     zPush = 0.0D;
-                                    break;
+                                }
                             }
                             break;
                         }
@@ -178,8 +177,8 @@ public class LocomotiveEntity extends AbstractCart {
             BlockPos blockPos = getOnPos().above().relative(getDirection());
             BlockState blockState = level.getBlockState(blockPos);
 
-            RailShape shape = ccUtil.anyRailShape(blockState, blockPos, this);
-            if (!getDeltaMovement().equals(Vec3.ZERO) && delta.length() < 1.0E-1 && ccUtil.railIsRotating(shape)) setDeltaMovement(Vec3.ZERO);
+            RailShape shape = anyRailShape(blockState, blockPos);
+            if (!getDeltaMovement().equals(Vec3.ZERO) && delta.length() < 1.0E-1 && railIsRotating(shape)) setDeltaMovement(Vec3.ZERO);
         }
     }
     public void fuelControl() {

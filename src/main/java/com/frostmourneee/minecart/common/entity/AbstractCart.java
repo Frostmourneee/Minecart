@@ -1,8 +1,9 @@
 package com.frostmourneee.minecart.common.entity;
 
-import com.frostmourneee.minecart.core.ccUtil;
+import com.frostmourneee.minecart.ccUtil;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -19,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.PoweredRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
@@ -45,11 +47,13 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
 
-    public float horAngle; //CLIENTSIDE ONLY
-    public float vertAngle; //CLIENTSIDE ONLY
-    public BlockPos posOfBackCart;
+    public float horAngle = 0.0F; //CLIENTSIDE ONLY //TODO purpose?
+    public float vertAngle = 0.0F; //CLIENTSIDE ONLY
+    public Vec3 delta = Vec3.ZERO;
+
+    public BlockPos posOfBackCart = new BlockPos(0, 0, 0);
     public boolean hasBackCart = false;
-    public BlockPos posOfFrontCart;
+    public BlockPos posOfFrontCart = new BlockPos(0, 0, 0);
     public boolean hasFrontCart = false;
 
     public boolean debugMode = true; //TODO remove debug
@@ -62,6 +66,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         vanillaTick();
 
         //My code starts
+        delta = position().subtract(xOld, yOld, zOld);
+
+        restoreRelativeCarts();
         collisionProcessing();
     }
 
@@ -134,7 +141,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (getCollisionHandler() != null) box = getCollisionHandler().getMinecartCollisionBox(this);
         else box = getBoundingBox().inflate(0.2D, 0.0D, 0.2D);
 
-        if (canBeRidden() && getDeltaMovement().horizontalDistanceSqr() > 0.01D) {
+        if (canBeRidden() && deltaMovement.horizontalDistanceSqr() > 0.01D) {
             List<Entity> list = level.getEntities(this, box, EntitySelector.pushableBy(this));
             if (!list.isEmpty()) {
                 for (Entity entity1 : list) {
@@ -237,7 +244,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                     }
                 }
                 case LOCOMOTIVE -> {
-                    if (!ccUtil.zeroDeltaMovementBigIndent(this) && ccUtil.zeroDeltaMovementBigIndent((AbstractCart) entity)) {
+                    if (!zeroDeltaMovementBigIndent() && ((AbstractCart) entity).zeroDeltaMovementBigIndent()) {
                         if (backCart != null) {
                             backCart.resetFront();
                             backCart.setDeltaMovement(getDeltaMovement());
@@ -491,7 +498,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         hasBackCart = compoundTag.getBoolean("BackCartExists");
         entityData.set(DATA_BACKCART_EXISTS, hasBackCart);
 
-        if (hasBackCart) {
+        if (compoundTag.getBoolean("BackCartExists")) {
             int[] cartPos;
             cartPos = compoundTag.getIntArray("BackCartExistsPos");
             posOfBackCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
@@ -504,7 +511,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             }
         }
 
-        if (hasFrontCart) {
+        if (compoundTag.getBoolean("FrontCartExists")) {
             int[] cartPos;
             cartPos = compoundTag.getIntArray("FrontCartExistsPos");
             posOfFrontCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
@@ -527,6 +534,25 @@ public abstract class AbstractCart extends AbstractMinecart {
             compoundTag.putIntArray(name + "Pos", cartPos);
         } else {
             compoundTag.putBoolean(name, false);
+        }
+    }
+    public void restoreRelativeCarts() {
+        if (backCart == null && hasBackCart) {
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfBackCart));
+            if (!rangeCart.isEmpty()) {
+                AbstractCart backCart = rangeCart.get(0);
+                backCart.connectFront(this);
+                connectBack(backCart);
+            }
+        }
+
+        if (frontCart == null && hasFrontCart) {
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfFrontCart));
+            if (!rangeCart.isEmpty()) {
+                AbstractCart frontCart = rangeCart.get(0);
+                frontCart.connectBack(this);
+                connectFront(frontCart);
+            }
         }
     }
 
@@ -554,6 +580,138 @@ public abstract class AbstractCart extends AbstractMinecart {
     public int trainLength() {
         if (recursiveLocomotive() != null) return wagonsLength(1) + 1;
             else return wagonsLength(1);
+    }*/
+
+    public boolean goesUpper() {
+        return delta.y > 0;
+    }
+    public boolean goesDown() {
+        return delta.y < 0;
+    }
+    public boolean goesFlat() {
+        if (zeroDeltaMovement() && isRail(level.getBlockState(blockPosition()))) {
+            return !anyRailShape(level.getBlockState(blockPosition()), blockPosition()).isAscending();
+        } else return ccUtil.nearZero(delta.y, 1.0E-3);
+    }
+
+    public boolean bothUpOrDownOrForward() {
+        if (zeroDeltaMovement() || frontCart.zeroDeltaMovement()) {
+            return anyRailShape(level.getBlockState(blockPosition()), blockPosition()).equals
+                    (anyRailShape(frontCart.level.getBlockState(frontCart.blockPosition()), frontCart.blockPosition()));
+        } else return (goesUpper() && frontCart.goesUpper()) ||
+                    (goesDown() && frontCart.goesDown()) ||
+                    (goesFlat() && frontCart.goesFlat());
+    }
+    public boolean isOnOneLine() {
+        return Math.abs(getY() - frontCart.getY()) < 1.0E-4
+                && (Math.abs(getX() - frontCart.getX()) < 1.0E-4 || Math.abs(getZ() - frontCart.getZ()) < 1.0E-4);
+    }
+
+    public boolean zeroDeltaMovement() {
+        return ccUtil.nearZero(delta, 1.0E-3);
+    }
+    public boolean zeroDeltaMovementBigIndent() {
+        return ccUtil.nearZero(delta, 5.0E-1);
+    }
+    public boolean isStopped() {
+        return delta == Vec3.ZERO;
+    }
+    public boolean isRotating() {
+        BlockPos blockPos = getOnPos().above();
+        BlockState blockState = level.getBlockState(blockPos);
+
+        if (isRail(blockState)) {
+            RailShape shape = anyRailShape(blockState, blockPos);
+            return railIsRotating(shape);
+        } else return false;
+    }
+
+    public static boolean isRail(BlockState blockState) {
+        return blockState.is(Blocks.RAIL) || blockState.is(Blocks.POWERED_RAIL) || blockState.is(Blocks.ACTIVATOR_RAIL) || blockState.is(Blocks.DETECTOR_RAIL);
+    }
+    public boolean railIsRotating(RailShape shape) {
+        return shape.equals(RailShape.NORTH_EAST) || shape.equals(RailShape.NORTH_WEST) || shape.equals(RailShape.SOUTH_EAST) || shape.equals(RailShape.SOUTH_WEST);
+    }
+    public RailShape anyRailShape(BlockState blockState, BlockPos blockPos) {
+        if (isRail(blockState)) return ((BaseRailBlock)blockState.getBlock())
+                .getRailDirection(blockState, this.level, blockPos, this);
+        else return null;
+    }
+
+    public static ArrayList<BlockPos> nearsBlockPos(BlockPos blockPos) {
+        ArrayList<BlockPos> tmp = new ArrayList<>();
+
+        tmp.add(blockPos.relative(Direction.UP));
+        tmp.add(blockPos.relative(Direction.EAST));
+        tmp.add(blockPos.relative(Direction.NORTH));
+        tmp.add(blockPos.relative(Direction.WEST));
+        tmp.add(blockPos.relative(Direction.SOUTH));
+        tmp.add(blockPos.relative(Direction.DOWN));
+
+        return tmp;
+    }
+
+    /*public static boolean goesUpper(AbstractCart cart) {
+        BlockPos blockPosBelow = new BlockPos(blockPosToVec3(cart.getOnPos()));
+        BlockPos blockPosUp = new BlockPos(blockPosToVec3(cart.getOnPos().above()));
+        BlockState blockStateBelow = cart.level.getBlockState(blockPosBelow);
+        BlockState blockStateUp = cart.level.getBlockState(blockPosUp);
+        Vec3 delta = cart.getDeltaMovement();
+
+        if (directionsProcessing(delta, blockStateUp, blockPosUp, cart)) return true;
+        else if (directionsProcessing(delta, blockStateBelow, blockPosBelow, cart)) return true;
+        else return false;
+    }*/
+    /*public static boolean directionsProcessing(Vec3 delta, BlockState blockState, BlockPos blockPos, AbstractCart cart) {
+        if (isRail(blockState)) {
+            if (anyRailShape(blockState, blockPos, cart).isAscending()) {
+                if (delta.x > 0 && delta.z == 0) {
+                    BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(1.0D, 1.0D, 0.0D)));
+                    return isRail(blockStateFront);
+                }
+                if (delta.x < 0 && delta.z == 0) {
+                    BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(-1.0D, 1.0D, 0.0D)));
+                    return isRail(blockStateFront);
+                }
+                if (delta.z > 0 && delta.x == 0) {
+                    BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(0.0D, 1.0D, 1.0D)));
+                    return isRail(blockStateFront);
+                }
+                if (delta.z < 0 && delta.x == 0) {
+                    BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(0.0D, 1.0D, -1.0D)));
+                    return isRail(blockStateFront);
+                }
+            }
+        }
+
+        return false;
+    }*/
+    /*public static boolean goesFlat1(AbstractCart cart) {
+        BlockPos blockPos = cart.blockPosition();
+        BlockState blockState = cart.level.getBlockState(blockPos);
+
+        if (isRail(blockState)) {
+            return !anyRailShape(blockState, blockPos, cart).isAscending();
+        }
+        else return false;
+    }*/
+
+    /*public static boolean bothUpOrDownOrForward1(AbstractCart backCart, AbstractCart frontCart) {
+
+        BlockPos blockPos = new BlockPos(0.5D * (backCart.getX() + frontCart.getX()), 0.5D * (backCart.getY() + frontCart.getY()), 0.5D * (backCart.getZ() + frontCart.getZ()));
+        BlockState blockState = backCart.level.getBlockState(blockPos);
+        if (goesFlat(backCart) && goesFlat(frontCart) && isOnOneLine(backCart, frontCart)) return true;
+        else if (goesFlat(backCart) || goesFlat(frontCart)) return false;
+        else if (goesUpper(backCart) && goesUpper(frontCart) && isRail(blockState) && anyRailShape(blockState, blockPos, backCart).isAscending())
+            return true;
+        else if (!goesUpper(backCart) && !goesUpper(frontCart) && isRail(blockState) && anyRailShape(blockState, blockPos, backCart).isAscending())
+            return true;
+
+        else return false;
+    }*/
+    /*public boolean bothUpOrDownOrForward2() {
+        return (ccUtil.nearZero(delta.y, 1.0E-3) && ccUtil.nearZero(frontCart.delta.y, 1.0E-3))
+                || delta.y * frontCart.delta.y > 0;
     }*/
 
     public enum Type {
