@@ -70,15 +70,23 @@ public class WagonItem extends Item {
 
                 if (rail.getRailDirection(blockstate, level, blockpos, null).equals(RailShape.NORTH_SOUTH)) {
                     wagonEntity.setPos(blockpos.getX() + 0.5D, blockpos.getY(), blockpos.getZ() + 0.5D);
-                    if (context.getPlayer().getZ() > wagonEntity.getZ()) wagonEntity.setYRot(180.0F);
-                    else wagonEntity.setYRot(0.0F);
+                    if (context.getPlayer().getZ() > wagonEntity.getZ()) {
+                        wagonEntity.setYRot(180.0F);
+                    }
+                    else {
+                        wagonEntity.setYRot(0.0F);
+                    }
                     level.addFreshEntity(wagonEntity);
                     level.gameEvent(context.getPlayer(), GameEvent.ENTITY_PLACE, blockpos);
                 }
                 else if (rail.getRailDirection(blockstate, level, blockpos, null).equals(RailShape.EAST_WEST)) {
                     wagonEntity.setPos(blockpos.getX() + 0.5D, blockpos.getY(), blockpos.getZ() + 0.5D);
-                    if (context.getPlayer().getX() > wagonEntity.getX()) wagonEntity.setYRot(90.0F);
-                    else wagonEntity.setYRot(270.0F);
+                    if (context.getPlayer().getX() > wagonEntity.getX()) {
+                        wagonEntity.setYRot(90.0F);
+                    }
+                    else {
+                        wagonEntity.setYRot(270.0F);
+                    }
                     level.addFreshEntity(wagonEntity);
                     level.gameEvent(context.getPlayer(), GameEvent.ENTITY_PLACE, blockpos);
                 }

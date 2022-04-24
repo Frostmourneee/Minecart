@@ -2,6 +2,7 @@ package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.minecart.ccUtil;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -185,25 +186,22 @@ public abstract class AbstractCart extends AbstractMinecart {
             d0 *= 0.05F;
             d1 *= 0.05F;
 
+            if (!entity.isVehicle()) {
+                if ((entity instanceof AbstractCart && !((AbstractCart)entity).hasFrontCart && !((AbstractCart)entity).hasBackCart)) {
+                    entity.push(-d0, 0.0D, -d1);
+                } else if (!(entity instanceof AbstractCart)) {
+                    entity.push(-d0, 0.0D, -d1);
+                }
+            }
+
             switch (getCartType()) {
                 case WAGON -> {
-                    if (!entity.isVehicle()) {
-                        if ((entity instanceof WagonEntity && ((WagonEntity) entity).backCart == null) ||
-                                (entity instanceof LocomotiveEntity && ((LocomotiveEntity) entity).backCart == null)) {
-                            entity.push(-d0, 0.0D, -d1);
-                        } else if (!(entity instanceof WagonEntity) && !(entity instanceof LocomotiveEntity)) {
-                            entity.push(-d0, 0.0D, -d1);
-                        }
-                    }
-                    if (!isVehicle() && backCart == null && !hasFrontCart) {
+                    if (!isVehicle() && !hasBackCart && !hasFrontCart) {
                         push(d0 / 5, 0.0D, d1 / 5); //TODO change
                     }
                 }
                 case LOCOMOTIVE -> {
-                    if (!entity.isVehicle()) {
-                        entity.push(-d0, 0.0D, -d1);
-                    }
-                    if (!isVehicle() && backCart == null) {
+                    if (!isVehicle() && !hasBackCart && !hasFrontCart) {
                         push(d0, 0.0D, d1);
                     }
                 }
@@ -230,7 +228,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             d1 *= 0.05F;
 
             if (!entity.isVehicle()) {
-                if (entity instanceof AbstractCart && ((AbstractCart) entity).backCart == null) {
+                if (entity instanceof AbstractCart && !((AbstractCart) entity).hasBackCart && !((AbstractCart) entity).hasFrontCart) {
                     entity.push(-d0, 0.0D, -d1);
                 } else if (!(entity instanceof AbstractCart)) {
                     entity.push(-d0, 0.0D, -d1);
@@ -239,24 +237,46 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             switch (getCartType()) {
                 case WAGON -> {
-                    if (!isVehicle() && backCart == null && !hasFrontCart) {
+                    if (!isVehicle() && !hasBackCart && !hasFrontCart) {
                         push(d0 / 5, 0.0D, d1 / 5); //TODO change
                     }
                 }
                 case LOCOMOTIVE -> {
-                    if (!zeroDeltaMovementBigIndent() && ((AbstractCart) entity).zeroDeltaMovementBigIndent()) {
-                        if (backCart != null) {
-                            backCart.resetFront();
-                            backCart.setDeltaMovement(getDeltaMovement());
-                        }
+                    if (entity instanceof AbstractCart) {
+                        if (!zeroDeltaMovementBigIndent() && ((AbstractCart) entity).zeroDeltaMovementBigIndent()) {
+                            if (hasBackCart) {
+                                backCart.resetFront();
+                                backCart.setDeltaMovement(getDeltaMovement());
+                            }
 
-                        remove(RemovalReason.KILLED);
-                        if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                            spawnAtLocation(LOCOMOTIVE_ITEM.get());
+                            remove(RemovalReason.KILLED);
+                            if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                                spawnAtLocation(LOCOMOTIVE_ITEM.get());
+                            }
+                        }
+                    }
+                    else {
+                        if (!zeroDeltaMovementBigIndent() && ccUtil.nearZero(entity.deltaMovement, 5.0E-1)) {
+                            if (hasBackCart) {
+                                backCart.resetFront();
+                                backCart.setDeltaMovement(getDeltaMovement());
+                            }
+
+                            remove(RemovalReason.KILLED);
+                            if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                                spawnAtLocation(LOCOMOTIVE_ITEM.get());
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+    @Override
+    public void push(double d1, double d2, double d3) {
+        if (!hasBackCart && !hasFrontCart) {
+            this.setDeltaMovement(this.getDeltaMovement().add(d1, d2, d3));
+            this.hasImpulse = true;
         }
     }
 
@@ -276,7 +296,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         resetFront();
         resetBack();
     }
-
     public void connectFront(AbstractCart cart) {
         frontCart = cart;
         hasFrontCart = true;
@@ -608,10 +627,10 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
 
     public boolean zeroDeltaMovement() {
-        return ccUtil.nearZero(delta, 1.0E-3);
+        return ccUtil.nearZero(delta, 1.0E-4);
     }
     public boolean zeroDeltaMovementBigIndent() {
-        return ccUtil.nearZero(delta, 5.0E-1);
+        return ccUtil.nearZero(delta, 5.0E-2);
     }
     public boolean isStopped() {
         return delta == Vec3.ZERO;

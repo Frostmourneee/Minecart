@@ -21,7 +21,7 @@ import static com.frostmourneee.minecart.common.entity.AbstractCart.DATA_VERTICA
 public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> {
 
     public ArrayList<Float> alpha = new ArrayList<>();
-    public float straightAngle = 0.0F;
+    //public float straightAngle = 0.0F;
 
     public AbstractCartRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -64,26 +64,21 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
     }
     public void findHorizontalAngle(AbstractCart cart) {
         if (cart.isStopped()) { //STAYING
-            switch (cart.getDirection()) {
-                case EAST -> straightAngle = 0.0F;
-                case NORTH -> straightAngle = 90.0F;
-                case WEST -> straightAngle = 180.0F;
-                case SOUTH -> straightAngle = 270.0F;
+             switch (cart.getDirection()) {
+                case EAST -> cart.horAngle = 0.0F;
+                case NORTH -> cart.horAngle = 90.0F;
+                case WEST -> cart.horAngle = 180.0F;
+                case SOUTH -> cart.horAngle = 270.0F;
             }
-            cart.horAngle = straightAngle;
         }
         else { //MOVING
             if (alpha.get(alpha.size() - 1) == -90.0F) { //NORTH-SOUTH MOVEMENT
-                if (cart.delta.z < 0) straightAngle = 90.0F;
-                if (cart.delta.z > 0) straightAngle = 270.0F;
-
-                cart.horAngle = straightAngle;
+                if (cart.delta.z < 0) cart.horAngle = 90.0F;
+                if (cart.delta.z > 0) cart.horAngle = 270.0F;
             }
             else if (alpha.get(alpha.size() - 1) == 180.0F) { //WEST-EAST Movement
-                if (cart.delta.x < 0) straightAngle = 180.F;
-                if (cart.delta.x > 0) straightAngle = 0.0F;
-
-                cart.horAngle = straightAngle;
+                if (cart.delta.x < 0) cart.horAngle = 180.F;
+                if (cart.delta.x > 0) cart.horAngle = 0.0F;
             }
             else if (alpha.size() == 2) { //Rotating movement
                 float deltaAlpha = alpha.get(1) - alpha.get(0);

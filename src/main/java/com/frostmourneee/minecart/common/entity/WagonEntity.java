@@ -1,9 +1,11 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
+import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.*;
@@ -79,18 +81,50 @@ public class WagonEntity extends AbstractCart {
 
     public void clampProcessing() {
         if (hasFrontCart) {
+            //setDeltaMovement(frontCart.deltaMovement);
+            /*poseConfiguration(Direction.EAST, -1, 0);
             poseConfiguration(Direction.NORTH, 0, 1);
-            poseConfiguration(Direction.SOUTH, 0, -1);
-            poseConfiguration(Direction.EAST, -1, 0);
             poseConfiguration(Direction.WEST, 1, 0);
+            poseConfiguration(Direction.SOUTH, 0, -1);*/
         }
     }
 
     //////////////////////////////////////TECHNICAL METHODS//////////////////////////
 
     public void poseConfiguration(Direction direction, int i1, int i3) {
-        if (getDirection().equals(direction)) {
+        /*if (getDirection().equals(direction)) {
             if (getDirection().equals(frontCart.getDirection()) && bothUpOrDownOrForward()) {
+                if (goesFlat() && frontCart.goesFlat() && !isRotating()) {
+                    if (getLocomotive() != null && !getLocomotive().isStopped()) {
+                        setDeltaMovement(frontCart.deltaMovement);
+                    }
+                    if (getLocomotive() == null && !frontCart.isStopped()) {
+                        setDeltaMovement(frontCart.deltaMovement);
+                    }
+                    setPos(frontCart.position().add(i1 * 1.625D, 0.0D, i3 * 1.625D));
+                }
+                else if (frontCart.goesUpper()) {
+                    setDeltaMovement(frontCart.deltaMovement);
+                    setPos(frontCart.position().add(i1 * 1.149D, -1.149D, i3 * 1.149D));
+                }
+                else if (frontCart.goesDown()) {
+                    setDeltaMovement(frontCart.deltaMovement);
+                    setPos(frontCart.position().add(i1 * 1.149D, 1.149D, i3 * 1.149D));
+                }
+            }
+            else {
+                if (frontCart.deltaMovement.length() > 1.0D) {
+                    if (getLocomotive() != null && !getLocomotive().isStopped()) setDeltaMovement(-i1, 0.0D, -i3);
+                    if (getLocomotive() == null && !frontCart.isStopped()) setDeltaMovement(-i1, 0.0D, -i3);
+                }
+                else {
+                    if (getLocomotive() != null && !getLocomotive().isStopped()) setDeltaMovement(-i1, 0.0D, -i3 * frontCart.deltaMovement.length());
+                    if (getLocomotive() == null && !frontCart.isStopped()) setDeltaMovement(-i1, 0.0D, -i3 * frontCart.deltaMovement.length());
+                }
+            }
+        }*/
+        if (getDirection().equals(direction)) {
+            if (getYRot() == frontCart.getYRot() && bothUpOrDownOrForward()) {
                 if (goesFlat() && frontCart.goesFlat() && !isRotating()) {
                     if (getLocomotive() != null && !getLocomotive().isStopped()) {
                         setDeltaMovement(frontCart.deltaMovement);
@@ -122,14 +156,23 @@ public class WagonEntity extends AbstractCart {
         }
     }
     @Override
+    public float getMaxCartSpeedOnRail() {
+        return 0.3f;
+    } //TODO change
+    @Override
+    public void moveMinecartOnRail(BlockPos pos) {
+        AbstractMinecart mc = this;
+        double d24 = mc.isVehicle() ? 0.75D : 1.0D;
+        double d25 = mc.getMaxSpeedWithRail();
+        Vec3 vec3d1 = mc.getDeltaMovement();
+        mc.move(MoverType.SELF, new Vec3(Mth.clamp(d24 * vec3d1.x, -d25, d25), 0.0D, Mth.clamp(d24 * vec3d1.z, -d25, d25)));
+    }
+    @Override
     public void setDeltaMovement(@NotNull Vec3 vec) {
-        if (Math.abs(delta.horizontalDistance()) < 1.0E-2) {
-            if (hasFrontCart && Math.abs(vec.horizontalDistance()) < 51.0E-3) deltaMovement = Vec3.ZERO;
-            else deltaMovement = vec;
-        } else {
-            if (hasFrontCart && Math.abs(vec.horizontalDistance()) < 2.0E-2) deltaMovement = Vec3.ZERO;
-            else deltaMovement = vec;
-        }
+        if (hasFrontCart) {
+            if (frontCart.isStopped()) deltaMovement = Vec3.ZERO;
+            else if (frontCart.position().subtract(position()).horizontalDistance() > 1.625D) deltaMovement = frontCart.deltaMovement;
+        } else deltaMovement = vec;
     }
 
     @Override
