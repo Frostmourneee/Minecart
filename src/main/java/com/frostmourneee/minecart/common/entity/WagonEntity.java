@@ -31,7 +31,7 @@ public class WagonEntity extends AbstractCart {
         super.tick();
 
         if (hasFrontCart) {
-            clampProcessing();
+
         }
     }
 
@@ -77,16 +77,6 @@ public class WagonEntity extends AbstractCart {
         super.collisionProcessing();
 
         spawnAfterCartLeaving();
-    }
-
-    public void clampProcessing() {
-        if (hasFrontCart) {
-            //setDeltaMovement(frontCart.deltaMovement);
-            /*poseConfiguration(Direction.EAST, -1, 0);
-            poseConfiguration(Direction.NORTH, 0, 1);
-            poseConfiguration(Direction.WEST, 1, 0);
-            poseConfiguration(Direction.SOUTH, 0, -1);*/
-        }
     }
 
     //////////////////////////////////////TECHNICAL METHODS//////////////////////////
@@ -165,13 +155,24 @@ public class WagonEntity extends AbstractCart {
         double d24 = mc.isVehicle() ? 0.75D : 1.0D;
         double d25 = mc.getMaxSpeedWithRail();
         Vec3 vec3d1 = mc.getDeltaMovement();
+
+        //Dempfer
+        /*if (hasFrontCart) { //May be here are spikes' reason, idk
+            double dist = frontCart.position().subtract(position().add(0.0D,0.0625D, 0.0D)).length(); //upping cause -60 & -59,9375
+
+            //System.out.println("before " + d25 + " " + (dist - 1.925D));
+            //d25 += (dist - 1.925D) / 2.0D;
+            System.out.println(dist);
+            System.out.println(" ");
+        }*/
+
         mc.move(MoverType.SELF, new Vec3(Mth.clamp(d24 * vec3d1.x, -d25, d25), 0.0D, Mth.clamp(d24 * vec3d1.z, -d25, d25)));
     }
     @Override
     public void setDeltaMovement(@NotNull Vec3 vec) {
         if (hasFrontCart) {
             if (frontCart.isStopped()) deltaMovement = Vec3.ZERO;
-            else if (frontCart.position().subtract(position()).horizontalDistance() > 1.625D) deltaMovement = frontCart.deltaMovement;
+            else if (frontCart.position().subtract(position()).length() > 1.625D) deltaMovement = frontCart.deltaMovement;
         } else deltaMovement = vec;
     }
 

@@ -57,7 +57,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public BlockPos posOfFrontCart = new BlockPos(0, 0, 0);
     public boolean hasFrontCart = false;
 
-    public boolean debugMode = true; //TODO remove debug
+    public boolean debugMode = false; //TODO remove debug
+    public int debugCounter = 0;
 
     public AbstractCart backCart = null;
     public AbstractCart frontCart = null;
@@ -484,7 +485,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         entityData.define(DATA_FRONTCART_EXISTS, false);
         entityData.define(DATA_BACKCART_EXISTS, false);
-        entityData.define(DATA_DEBUG_MODE, true);
+        entityData.define(DATA_DEBUG_MODE, false);
 
         entityData.define(DATA_HORIZONTAL_ROTATION_ANGLE, 0.0F);
         entityData.define(DATA_VERTICAL_ROTATION_ANGLE, 0.0F);
