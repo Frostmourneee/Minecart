@@ -1,7 +1,6 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
-import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,9 +29,8 @@ public class WagonEntity extends AbstractCart {
     public void tick() {
         super.tick();
 
-        if (hasFrontCart) {
+        //===================== MY CODE STARTS ======================
 
-        }
     }
 
     public @NotNull InteractionResult interact(@NotNull Player player, @NotNull InteractionHand interactionHand) {
@@ -80,71 +78,6 @@ public class WagonEntity extends AbstractCart {
     }
 
     //////////////////////////////////////TECHNICAL METHODS//////////////////////////
-
-    public void poseConfiguration(Direction direction, int i1, int i3) {
-        /*if (getDirection().equals(direction)) {
-            if (getDirection().equals(frontCart.getDirection()) && bothUpOrDownOrForward()) {
-                if (goesFlat() && frontCart.goesFlat() && !isRotating()) {
-                    if (getLocomotive() != null && !getLocomotive().isStopped()) {
-                        setDeltaMovement(frontCart.deltaMovement);
-                    }
-                    if (getLocomotive() == null && !frontCart.isStopped()) {
-                        setDeltaMovement(frontCart.deltaMovement);
-                    }
-                    setPos(frontCart.position().add(i1 * 1.625D, 0.0D, i3 * 1.625D));
-                }
-                else if (frontCart.goesUpper()) {
-                    setDeltaMovement(frontCart.deltaMovement);
-                    setPos(frontCart.position().add(i1 * 1.149D, -1.149D, i3 * 1.149D));
-                }
-                else if (frontCart.goesDown()) {
-                    setDeltaMovement(frontCart.deltaMovement);
-                    setPos(frontCart.position().add(i1 * 1.149D, 1.149D, i3 * 1.149D));
-                }
-            }
-            else {
-                if (frontCart.deltaMovement.length() > 1.0D) {
-                    if (getLocomotive() != null && !getLocomotive().isStopped()) setDeltaMovement(-i1, 0.0D, -i3);
-                    if (getLocomotive() == null && !frontCart.isStopped()) setDeltaMovement(-i1, 0.0D, -i3);
-                }
-                else {
-                    if (getLocomotive() != null && !getLocomotive().isStopped()) setDeltaMovement(-i1, 0.0D, -i3 * frontCart.deltaMovement.length());
-                    if (getLocomotive() == null && !frontCart.isStopped()) setDeltaMovement(-i1, 0.0D, -i3 * frontCart.deltaMovement.length());
-                }
-            }
-        }*/
-        if (getDirection().equals(direction)) {
-            if (getYRot() == frontCart.getYRot() && bothUpOrDownOrForward()) {
-                if (goesFlat() && frontCart.goesFlat() && !isRotating()) {
-                    if (getLocomotive() != null && !getLocomotive().isStopped()) {
-                        setDeltaMovement(frontCart.deltaMovement);
-                    }
-                    if (getLocomotive() == null && !frontCart.isStopped()) {
-                        setDeltaMovement(frontCart.deltaMovement);
-                    }
-                    setPos(frontCart.position().add(i1 * 1.625D, 0.0D, i3 * 1.625D));
-                }
-                else if (frontCart.goesUpper()) {
-                    setDeltaMovement(frontCart.deltaMovement);
-                    setPos(frontCart.position().add(i1 * 1.149D, -1.149D, i3 * 1.149D));
-                }
-                else if (frontCart.goesDown()) {
-                    setDeltaMovement(frontCart.deltaMovement);
-                    setPos(frontCart.position().add(i1 * 1.149D, 1.149D, i3 * 1.149D));
-                }
-            }
-            else {
-                if (frontCart.deltaMovement.length() > 1.0D) {
-                    if (getLocomotive() != null && !getLocomotive().isStopped()) setDeltaMovement(-i1, 0.0D, -i3);
-                    if (getLocomotive() == null && !frontCart.isStopped()) setDeltaMovement(-i1, 0.0D, -i3);
-                }
-                else {
-                    if (getLocomotive() != null && !getLocomotive().isStopped()) setDeltaMovement(-i1, 0.0D, -i3 * frontCart.deltaMovement.length());
-                    if (getLocomotive() == null && !frontCart.isStopped()) setDeltaMovement(-i1, 0.0D, -i3 * frontCart.deltaMovement.length());
-                }
-            }
-        }
-    }
     @Override
     public float getMaxCartSpeedOnRail() {
         return 0.3f;
@@ -193,7 +126,7 @@ public class WagonEntity extends AbstractCart {
 
     public boolean canBeClamped(Player player, ItemStack itemStack) {
         if (player.isSecondaryUseActive()) { //WITH SHIFT PRESSED
-            BlockPos blockPos = new BlockPos(getX(), getY(), getZ());
+            BlockPos blockPos = new BlockPos(position());
             BlockState blockState = level.getBlockState(blockPos);
 
             return itemStack.getItem().equals(ccItemInit.CLAMP.get())

@@ -2,7 +2,6 @@ package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.minecart.ccUtil;
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -51,6 +50,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public float horAngle = 0.0F; //CLIENTSIDE ONLY //TODO purpose?
     public float vertAngle = 0.0F; //CLIENTSIDE ONLY
     public Vec3 delta = Vec3.ZERO;
+    public ArrayList<Integer> verticalMovementType = new ArrayList<>(); //1 = up; 0 = flat; -1 = down
+    public boolean isPosCorrected = true;
 
     public BlockPos posOfBackCart = new BlockPos(0, 0, 0);
     public boolean hasBackCart = false;
@@ -69,8 +70,11 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //My code starts
         delta = position().subtract(xOld, yOld, zOld);
+        verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
+        if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
 
         restoreRelativeCarts();
+        posCorrectionToFrontCart();
         collisionProcessing();
     }
 
@@ -308,6 +312,36 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.set(DATA_BACKCART_EXISTS, true);
     }
 
+    public void posCorrectionToFrontCart() {
+        if (hasFrontCart && verticalMovementType.size() == 2) {
+            if (!verticalMovementType.get(0).equals(verticalMovementType.get(1))) {
+                isPosCorrected = false;
+            }
+            double dist = frontCart.position().subtract(position()).length();
+
+            if (!isPosCorrected) {
+                if (ccUtil.nearZero(dist - 2.298D, 1.0E-1)) {
+                    if (goesUp()) {
+                        setPos(frontCart.position().add(frontCart.oppDirToVec3().subtract(0.0D, 1.0D, 0.0D).scale(1.149D)));
+                    }
+                    if (goesDown()) {
+                        setPos(frontCart.position().add(frontCart.oppDirToVec3().add(0.0D, 1.0D, 0.0D).scale(1.149D)));
+                    }
+                    isPosCorrected = true;
+                }
+                if (isOnHorizontalLine()) {
+                    setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
+                    isPosCorrected = true;
+                }
+            }
+
+        }
+    }
+    public Vec3 oppDirToVec3() {
+        return new Vec3(getDirection().getOpposite().getNormal().getX(),
+                getDirection().getOpposite().getNormal().getY(),
+                getDirection().getOpposite().getNormal().getZ());
+    }
     @Override
     public Vec3 getPos(double x, double y, double z) { //Used in Renderer class
         int i = Mth.floor(x);
@@ -401,31 +435,25 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
 
     public void tryingToClamp() {
-
         ArrayList<AbstractCart> frontAbstractCart;
-        frontAbstractCart = frontOnRailCart(new BlockPos(position()));
+        frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
+                new AABB(new BlockPos(position()).relative(getDirection())).inflate(0.9D, 0.0D, 0.9D)); //LOOKING FOR CARTS IN FRONT
 
         frontAbstractCart.removeIf(cart -> cart.equals(this));
-
         if (!frontAbstractCart.isEmpty()) connection(frontAbstractCart);
     }
-    public ArrayList<AbstractCart> frontOnRailCart(BlockPos blockPos) {
-        return (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
-                new AABB(blockPos.relative(getDirection())).inflate(0.9D, 0.0D, 0.9D));
-    }
     public void connection(ArrayList<AbstractCart> frontAbstractCart) {
-
         if (frontAbstractCart.get(0).getDirection().equals(getDirection())) {
-
             connectFront(frontAbstractCart.get(0));
             frontCart.connectBack(this);
+            setPos(frontCart.position().add(oppDirToVec3().scale(1.625D)));
 
-            switch (getDirection()) {
-                case EAST -> setPos(frontCart.position().add(-1.625D, 0.0D, 0.0D));
-                case NORTH -> setPos(frontCart.position().add(0.0D, 0.0D, 1.625D));
-                case WEST -> setPos(frontCart.position().add(1.625D, 0.0D, 0.0D));
-                case SOUTH -> setPos(frontCart.position().add(0.0D, 0.0D, -1.625D));
+            AbstractCart cart = this; //PULLING BACK CARTS UP TO CORRECT COORDS
+            while (cart.backCart != null) {
+                cart = cart.backCart;
+                cart.setPos(cart.frontCart.position().add(oppDirToVec3().scale(1.625D)));
             }
+
             setDeltaMovement(Vec3.ZERO);
         }
     }
@@ -587,6 +615,17 @@ public abstract class AbstractCart extends AbstractMinecart {
             return null;
         }
     }
+    public AbstractCart getFirstCart() {
+        AbstractCart cart = this;
+        while (cart.frontCart != null) {
+            cart = cart.frontCart;
+        }
+        if (cart.getCartType() == Type.LOCOMOTIVE) {
+            return cart.backCart;
+        } else {
+            return cart;
+        }
+    }
     public AbstractCart getLastCart() {
         AbstractCart cart = this;
         while (cart.backCart != null) {
@@ -594,15 +633,41 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         return cart;
     }
-    /*public int wagonsLength() {
-        //TODO realize
+
+    public int cartsAhead() {
+        int i = 0;
+        AbstractCart cart = this;
+
+        while (cart.frontCart != null) {
+            cart = cart.frontCart;
+            i++;
+        }
+        return i;
+    }
+    public int cartsBehind() {
+        int i = 0;
+        AbstractCart cart = this;
+
+        while (cart.backCart != null) {
+            cart = cart.backCart;
+            i++;
+        }
+        return i;
+    }
+    public int wagonsAhead() {
+        return getLocomotive() == null ? cartsAhead() : cartsAhead() - 1;
+    }
+    public int wagonsBehind() {
+        return cartsBehind();
+    }
+    public int wagonsLength() {
+        return wagonsAhead() + wagonsBehind() + 1;
     } //SERVER ONLY
     public int trainLength() {
-        if (recursiveLocomotive() != null) return wagonsLength(1) + 1;
-            else return wagonsLength(1);
-    }*/
+        return getLocomotive() == null ? wagonsLength() : wagonsLength() + 1;
+    }
 
-    public boolean goesUpper() {
+    public boolean goesUp() {
         return delta.y > 0;
     }
     public boolean goesDown() {
@@ -618,13 +683,14 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (zeroDeltaMovement() || frontCart.zeroDeltaMovement()) {
             return anyRailShape(level.getBlockState(blockPosition()), blockPosition()).equals
                     (anyRailShape(frontCart.level.getBlockState(frontCart.blockPosition()), frontCart.blockPosition()));
-        } else return (goesUpper() && frontCart.goesUpper()) ||
+        } else return (goesUp() && frontCart.goesUp()) ||
                     (goesDown() && frontCart.goesDown()) ||
                     (goesFlat() && frontCart.goesFlat());
     }
-    public boolean isOnOneLine() {
-        return Math.abs(getY() - frontCart.getY()) < 1.0E-4
+    public boolean isOnHorizontalLine() {
+        if (hasFrontCart) return Math.abs(getY() - frontCart.getY()) < 1.0E-4
                 && (Math.abs(getX() - frontCart.getX()) < 1.0E-4 || Math.abs(getZ() - frontCart.getZ()) < 1.0E-4);
+        else return false;
     }
 
     public boolean zeroDeltaMovement() {
@@ -670,70 +736,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         return tmp;
     }
-
-    /*public static boolean goesUpper(AbstractCart cart) {
-        BlockPos blockPosBelow = new BlockPos(blockPosToVec3(cart.getOnPos()));
-        BlockPos blockPosUp = new BlockPos(blockPosToVec3(cart.getOnPos().above()));
-        BlockState blockStateBelow = cart.level.getBlockState(blockPosBelow);
-        BlockState blockStateUp = cart.level.getBlockState(blockPosUp);
-        Vec3 delta = cart.getDeltaMovement();
-
-        if (directionsProcessing(delta, blockStateUp, blockPosUp, cart)) return true;
-        else if (directionsProcessing(delta, blockStateBelow, blockPosBelow, cart)) return true;
-        else return false;
-    }*/
-    /*public static boolean directionsProcessing(Vec3 delta, BlockState blockState, BlockPos blockPos, AbstractCart cart) {
-        if (isRail(blockState)) {
-            if (anyRailShape(blockState, blockPos, cart).isAscending()) {
-                if (delta.x > 0 && delta.z == 0) {
-                    BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(1.0D, 1.0D, 0.0D)));
-                    return isRail(blockStateFront);
-                }
-                if (delta.x < 0 && delta.z == 0) {
-                    BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(-1.0D, 1.0D, 0.0D)));
-                    return isRail(blockStateFront);
-                }
-                if (delta.z > 0 && delta.x == 0) {
-                    BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(0.0D, 1.0D, 1.0D)));
-                    return isRail(blockStateFront);
-                }
-                if (delta.z < 0 && delta.x == 0) {
-                    BlockState blockStateFront = cart.level.getBlockState(new BlockPos(blockPosToVec3(blockPos).add(0.0D, 1.0D, -1.0D)));
-                    return isRail(blockStateFront);
-                }
-            }
-        }
-
-        return false;
-    }*/
-    /*public static boolean goesFlat1(AbstractCart cart) {
-        BlockPos blockPos = cart.blockPosition();
-        BlockState blockState = cart.level.getBlockState(blockPos);
-
-        if (isRail(blockState)) {
-            return !anyRailShape(blockState, blockPos, cart).isAscending();
-        }
-        else return false;
-    }*/
-
-    /*public static boolean bothUpOrDownOrForward1(AbstractCart backCart, AbstractCart frontCart) {
-
-        BlockPos blockPos = new BlockPos(0.5D * (backCart.getX() + frontCart.getX()), 0.5D * (backCart.getY() + frontCart.getY()), 0.5D * (backCart.getZ() + frontCart.getZ()));
-        BlockState blockState = backCart.level.getBlockState(blockPos);
-        if (goesFlat(backCart) && goesFlat(frontCart) && isOnOneLine(backCart, frontCart)) return true;
-        else if (goesFlat(backCart) || goesFlat(frontCart)) return false;
-        else if (goesUpper(backCart) && goesUpper(frontCart) && isRail(blockState) && anyRailShape(blockState, blockPos, backCart).isAscending())
-            return true;
-        else if (!goesUpper(backCart) && !goesUpper(frontCart) && isRail(blockState) && anyRailShape(blockState, blockPos, backCart).isAscending())
-            return true;
-
-        else return false;
-    }*/
-    /*public boolean bothUpOrDownOrForward2() {
-        return (ccUtil.nearZero(delta.y, 1.0E-3) && ccUtil.nearZero(frontCart.delta.y, 1.0E-3))
-                || delta.y * frontCart.delta.y > 0;
-    }*/
-
     public enum Type {
         WAGON,
         LOCOMOTIVE
