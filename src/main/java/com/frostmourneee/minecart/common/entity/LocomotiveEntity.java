@@ -2,6 +2,7 @@ package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
 import com.frostmourneee.minecart.ccUtil;
+import com.frostmourneee.minecart.core.init.ccItemInit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -101,7 +102,7 @@ public class LocomotiveEntity extends AbstractCart {
             }
         } //TODO remove debug
 
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
     }
 
     public void addFuelByHopper(int plusFuel) {
@@ -211,6 +212,12 @@ public class LocomotiveEntity extends AbstractCart {
         return entityData.get(DATA_BACKCART_EXISTS) && isAlive();
     }
 
+    @Override
+    public void setDeltaMovement(Vec3 vec) {
+        deltaMovement = vec;
+
+        if (deltaMovement.length() < 1.0E-3) deltaMovement = Vec3.ZERO;
+    }
     @Override
     protected double getMaxSpeed() {
         return (isInWater() ? 4.0D : 8.0D) / 20.0D;

@@ -439,7 +439,6 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void tryingToClamp() {
         ArrayList<AbstractCart> frontAbstractCart;
         AABB areaOfSearch = ccUtil.getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
-
         frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 3 FRONT BLOCKS
         frontAbstractCart.removeIf(cart -> cart.equals(this));
 

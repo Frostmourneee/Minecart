@@ -2,6 +2,8 @@ package com.frostmourneee.minecart.client.renderer;
 
 import com.frostmourneee.debugging_minecart.core.dmUtil;
 import com.frostmourneee.minecart.common.entity.AbstractCart;
+import com.frostmourneee.minecart.common.entity.LocomotiveEntity;
+import com.frostmourneee.minecart.common.entity.WagonEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Vector3f;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -73,12 +75,12 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         }
         else { //MOVING
             if (alpha.get(alpha.size() - 1) == -90.0F) { //NORTH-SOUTH MOVEMENT
-                if (cart.delta.z < 0) cart.horAngle = 90.0F;
-                if (cart.delta.z > 0) cart.horAngle = 270.0F;
+                if (cart.delta.z < -1.0E-4) cart.horAngle = 90.0F;
+                if (cart.delta.z > 1.0E-4) cart.horAngle = 270.0F;
             }
             else if (alpha.get(alpha.size() - 1) == 180.0F) { //WEST-EAST Movement
-                if (cart.delta.x < 0) cart.horAngle = 180.F;
-                if (cart.delta.x > 0) cart.horAngle = 0.0F;
+                if (cart.delta.x < -1.0E-4) cart.horAngle = 180.F;
+                if (cart.delta.x > 1.0E-4) cart.horAngle = 0.0F;
             }
             else if (alpha.size() == 2) { //Rotating movement
                 float deltaAlpha = alpha.get(1) - alpha.get(0);
