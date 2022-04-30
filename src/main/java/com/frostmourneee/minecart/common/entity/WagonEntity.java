@@ -38,7 +38,7 @@ public class WagonEntity extends AbstractCart {
         if (ret.consumesAction()) return ret;
         ItemStack itemStack = player.getItemInHand(interactionHand);
 
-        if (player.isSecondaryUseActive() && itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
+        if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
             if (debugMode) {
                 debugMode = false;
                 entityData.set(DATA_DEBUG_MODE, false);
@@ -64,7 +64,7 @@ public class WagonEntity extends AbstractCart {
             return InteractionResult.PASS;
         } else if (isVehicle()) {
             return InteractionResult.PASS;
-        } else if (!level.isClientSide) {
+        } else if (!level.isClientSide && !itemStack.getItem().equals(ccItemInit.CLAMP.get()) && !itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
             return player.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
         } else {
             return InteractionResult.SUCCESS;
@@ -111,7 +111,7 @@ public class WagonEntity extends AbstractCart {
 
     @Override
     public boolean canBeCollidedWith() {
-        return entityData.get(DATA_BACKCART_EXISTS) || entityData.get(DATA_FRONTCART_EXISTS) && isAlive();
+        return (entityData.get(DATA_BACKCART_EXISTS) || entityData.get(DATA_FRONTCART_EXISTS)) && isAlive();
     }
 
     public void spawnAfterCartLeaving() {
@@ -125,16 +125,12 @@ public class WagonEntity extends AbstractCart {
     }
 
     public boolean canBeClamped(Player player, ItemStack itemStack) {
-        if (player.isSecondaryUseActive()) { //WITH SHIFT PRESSED
-            BlockPos blockPos = new BlockPos(position());
-            BlockState blockState = level.getBlockState(blockPos);
+        BlockPos blockPos = new BlockPos(position());
+        BlockState blockState = level.getBlockState(blockPos);
 
-            return itemStack.getItem().equals(ccItemInit.CLAMP.get())
-                    && isRail(blockState)
-                    && !anyRailShape(blockState, blockPos).isAscending()
-                    && zeroDeltaMovement();
-        }
-        else return false;
+        return itemStack.getItem().equals(ccItemInit.CLAMP.get())
+                && isRail(blockState)
+                && !anyRailShape(blockState, blockPos).isAscending();
     }
 
     public void activateMinecart(int int1, int int2, int int3, boolean bool1) {

@@ -20,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.PoweredRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -29,6 +30,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static com.frostmourneee.minecart.core.init.ccItemInit.LOCOMOTIVE_ITEM;
@@ -436,14 +438,24 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public void tryingToClamp() {
         ArrayList<AbstractCart> frontAbstractCart;
-        frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
-                new AABB(new BlockPos(position()).relative(getDirection())).inflate(0.9D, 0.0D, 0.9D)); //LOOKING FOR CARTS IN FRONT
+        AABB areaOfSearch = ccUtil.getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
 
+        frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 3 FRONT BLOCKS
         frontAbstractCart.removeIf(cart -> cart.equals(this));
-        if (!frontAbstractCart.isEmpty()) connection(frontAbstractCart);
+
+        if (!frontAbstractCart.isEmpty()) {
+            connection(frontAbstractCart);
+        }
     }
     public void connection(ArrayList<AbstractCart> frontAbstractCart) {
+        for (int i = 1; i < frontAbstractCart.size(); i++) { //SEARCHING FOR THE NEAREST
+            if (frontAbstractCart.get(i).distanceTo(this) < frontAbstractCart.get(0).distanceTo(this)) {
+                frontAbstractCart.set(0, frontAbstractCart.get(i));
+            }
+        }
+
         if (frontAbstractCart.get(0).getDirection().equals(getDirection())) {
+            setDeltaMovement(Vec3.ZERO);
             connectFront(frontAbstractCart.get(0));
             frontCart.connectBack(this);
             setPos(frontCart.position().add(oppDirToVec3().scale(1.625D)));
@@ -453,8 +465,6 @@ public abstract class AbstractCart extends AbstractMinecart {
                 cart = cart.backCart;
                 cart.setPos(cart.frontCart.position().add(oppDirToVec3().scale(1.625D)));
             }
-
-            setDeltaMovement(Vec3.ZERO);
         }
     }
 
