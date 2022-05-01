@@ -34,6 +34,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.frostmourneee.minecart.ccUtil.*;
 import static com.frostmourneee.minecart.core.init.ccItemInit.LOCOMOTIVE_ITEM;
 import static com.frostmourneee.minecart.core.init.ccItemInit.WAGON_ITEM;
 
@@ -71,9 +72,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
-        if (!zeroDeltaHorizontal()) {
-            //fix
-        }
+        if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -258,7 +257,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                         }
                     }
                     else {
-                        if (!zeroDeltaBigIndent() && ccUtil.nearZero(entity.deltaMovement, 5.0E-1)) {
+                        if (!zeroDeltaBigIndent() && nearZero(entity.deltaMovement, 5.0E-1)) {
                             if (hasBackCart) {
                                 backCart.resetFront();
                                 backCart.setDeltaMovement(getDeltaMovement());
@@ -317,7 +316,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             double dist = frontCart.position().subtract(position()).length();
 
             if (!isPosCorrected) {
-                if (ccUtil.nearZero(dist - 2.298D, 1.0E-1)) {
+                if (nearZero(dist - 2.298D, 1.0E-1)) {
                     if (goesUp()) {
                         setPos(frontCart.position().add(frontCart.oppDirToVec3().subtract(0.0D, 1.0D, 0.0D).scale(1.149D)));
                     }
@@ -433,7 +432,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public void tryingToClamp() {
         ArrayList<AbstractCart> frontAbstractCart;
-        AABB areaOfSearch = ccUtil.getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
+        AABB areaOfSearch = getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
         frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 3 FRONT BLOCKS
         frontAbstractCart.removeIf(cart -> cart.equals(this));
 
@@ -672,7 +671,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean goesFlat() {
         if (zeroDelta() && isRail(level.getBlockState(blockPosition()))) {
             return !anyRailShape(level.getBlockState(blockPosition()), blockPosition()).isAscending();
-        } else return ccUtil.nearZero(delta.y, 1.0E-3);
+        } else return nearZero(delta.y, 1.0E-3);
     }
 
     public boolean bothUpOrDownOrForward() {
@@ -690,16 +689,16 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
 
     public boolean zeroDelta() {
-        return ccUtil.nearZero(delta, 1.0E-4);
+        return nearZero(delta, 1.0E-4);
     }
     public boolean zeroDeltaBigIndent() {
-        return ccUtil.nearZero(delta, 5.0E-2);
+        return nearZero(delta, 5.0E-2);
     }
     public boolean zeroDeltaHorizontal() {
-        return ccUtil.nearZero(delta.subtract(0.0D, delta.y, 0.0D), 1.0E-3);
+        return nearZero(delta.subtract(0.0D, delta.y, 0.0D), 1.0E-3);
     }
     public boolean zeroDeltaHorizontalBigIndent() {
-        return ccUtil.nearZero(delta.subtract(0.0D, delta.y, 0.0D), 5.0E-2);
+        return nearZero(delta.subtract(0.0D, delta.y, 0.0D), 5.0E-2);
     }
     public boolean isStopped() {
         return delta == Vec3.ZERO;
