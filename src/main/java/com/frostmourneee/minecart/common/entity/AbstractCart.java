@@ -301,6 +301,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         frontCart = cart;
         hasFrontCart = true;
         entityData.set(DATA_FRONTCART_EXISTS, true);
+
+        level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_CLAMP.get(),
+                SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
     }
     public void connectBack(AbstractCart cart) {
         backCart = cart;
