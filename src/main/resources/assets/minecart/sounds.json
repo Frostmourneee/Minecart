@@ -15,5 +15,11 @@
     "sounds": [
       "minecart:cart_clamp_fail"
     ]
+  },
+
+  "entity.locomotive.start" : {
+    "sounds": [
+      "minecart:locomotive_start"
+    ]
   }
 }
