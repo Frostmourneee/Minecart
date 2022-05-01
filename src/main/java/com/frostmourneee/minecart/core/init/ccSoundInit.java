@@ -17,6 +17,9 @@ public final class ccSoundInit {
     public static final RegistryObject<SoundEvent> CART_UNCLAMP = SOUNDS.register("entity.cart.unclamp",
             () -> new SoundEvent(new ResourceLocation(minecart.MOD_ID, "entity.cart.unclamp")));
 
+    public static final RegistryObject<SoundEvent> CART_CLAMP_FAIL = SOUNDS.register("entity.cart.clamp_fail",
+            () -> new SoundEvent(new ResourceLocation(minecart.MOD_ID, "entity.cart.clamp_fail")));
+
     private ccSoundInit() {
 
     }

@@ -9,5 +9,11 @@
     "sounds": [
       "minecart:cart_unclamp"
     ]
+  },
+
+  "entity.cart.clamp_fail" : {
+    "sounds": [
+      "minecart:cart_clamp_fail"
+    ]
   }
 }
