@@ -2,7 +2,6 @@ package com.frostmourneee.minecart;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -17,37 +16,22 @@ public class ccUtil {
         return nearZero(vec.x, epsilon) && nearZero(vec.y, epsilon) && nearZero(vec.z, epsilon);
     }
 
+    public static double maxOf3(double a, double b, double c) {
+        return a >= b ? (Math.max(a, c)) : (Math.max(b, c));
+    }
     public static Direction vecToDirection(Vec3 vec) {
         Vec3 absVec = new Vec3(Math.abs(vec.x), Math.abs(vec.y), Math.abs(vec.z));
-        String tmp;
 
-        if (absVec.x > absVec.y) {
-            if (absVec.x > absVec.z) tmp = "X";
-            else if (absVec.x < absVec.z) tmp = "Z";
-            else return null;
-        } else {
-            if (absVec.y > absVec.z) tmp = "Y";
-            else if (absVec.y < absVec.z) tmp = "Z";
-            else return null;
+        double max = maxOf3(absVec.x, absVec.y, absVec.z);
+        if (nearZero(max - absVec.x, 1.0E-4)) {
+            return vec.x > 1.0E-4 ? Direction.EAST : Direction.WEST;
         }
-
-        Direction direction = null;
-        switch(tmp) {
-            case "X":
-                if (vec.x > 0) direction = Direction.EAST;
-                else direction = Direction.WEST;
-                break;
-            case "Y":
-                if (vec.y > 0) direction = Direction.UP;
-                else direction = Direction.DOWN;
-                break;
-            case "Z":
-                if (vec.z > 0) direction = Direction.SOUTH;
-                else direction = Direction.NORTH;
-                break;
+        else if (nearZero(max - absVec.z, 1.0E-4)) {
+            return vec.z > 1.0E-4 ? Direction.SOUTH : Direction.NORTH;
         }
-
-        return direction;
+        else {
+            return vec.y > 1.0E-4 ? Direction.UP : Direction.DOWN;
+        }
     }
     public static Vec3 blockPosToVec3 (BlockPos blockPos) {
         return new Vec3(blockPos.getX(), blockPos.getY(), blockPos.getZ());
@@ -64,5 +48,15 @@ public class ccUtil {
 
             return new AABB(x1, y1, z1, x2, y2, z2);
         } else return new AABB(pos1);
+    }
+
+    public static void customPrint(Object... str) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for (Object s : str) {
+            stringBuilder.append(s);
+            stringBuilder.append(" ");
+        }
+        System.out.println(stringBuilder);
     }
 }
