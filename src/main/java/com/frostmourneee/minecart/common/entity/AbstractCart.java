@@ -52,6 +52,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public ArrayList<Integer> verticalMovementType = new ArrayList<>(); //1 = up; 0 = flat; -1 = down
     public boolean isPosCorrected = true;
 
+    public float horAngle = 0.0F; //USED ONLY IN RENDERER, HERE ALWAYS 0
+    public float vertAngle = 0.0F;
     public BlockPos posOfBackCart = new BlockPos(0, 0, 0);
     public boolean hasBackCart = false;
     public BlockPos posOfFrontCart = new BlockPos(0, 0, 0);
