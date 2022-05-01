@@ -21,5 +21,11 @@
     "sounds": [
       "minecart:locomotive_start"
     ]
+  },
+
+  "entity.cart.put" : {
+    "sounds": [
+      "minecart:cart_put"
+    ]
   }
 }

@@ -1,14 +1,19 @@
 package com.frostmourneee.minecart.common.item;
 
+import com.frostmourneee.minecart.ccUtil;
+import com.frostmourneee.minecart.common.entity.AbstractCart;
 import com.frostmourneee.minecart.common.entity.WagonEntity;
 import com.frostmourneee.minecart.core.init.ccEntityInit;
+import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.BlockSource;
 import net.minecraft.core.Direction;
 import net.minecraft.core.dispenser.DefaultDispenseItemBehavior;
 import net.minecraft.core.dispenser.DispenseItemBehavior;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -19,6 +24,8 @@ import net.minecraft.world.level.block.DispenserBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
+
+import static com.frostmourneee.minecart.common.entity.AbstractCart.*;
 
 public class WagonItem extends Item {
     public WagonItem(Properties properties) {
@@ -56,6 +63,7 @@ public class WagonItem extends Item {
     }
 
     public InteractionResult useOn(UseOnContext context) {
+        Player player = context.getPlayer();
         Level level = context.getLevel();
         BlockPos blockpos = context.getClickedPos();
         BlockState blockstate = level.getBlockState(blockpos);
@@ -64,35 +72,37 @@ public class WagonItem extends Item {
             return InteractionResult.FAIL;
         } else {
             ItemStack itemstack = context.getItemInHand();
-            if (!level.isClientSide) {
-                WagonEntity wagonEntity = new WagonEntity(ccEntityInit.WAGON_ENTITY.get(), level);
-                BaseRailBlock rail = (BaseRailBlock) blockstate.getBlock();
+            BaseRailBlock rail = (BaseRailBlock) blockstate.getBlock();
 
-                if (rail.getRailDirection(blockstate, level, blockpos, null).equals(RailShape.NORTH_SOUTH)) {
+            if (!railIsRotating(rail.getRailDirection(blockstate, level, blockpos, null))) {
+                level.playSound(player, blockpos, ccSoundInit.CART_PUT.get(),
+                        SoundSource.BLOCKS, 1.0F, 1.0F);
+
+                if (!level.isClientSide) {
+                    WagonEntity wagonEntity = new WagonEntity(ccEntityInit.WAGON_ENTITY.get(), level);
                     wagonEntity.setPos(blockpos.getX() + 0.5D, blockpos.getY(), blockpos.getZ() + 0.5D);
-                    if (context.getPlayer().getZ() > wagonEntity.getZ()) {
-                        wagonEntity.setYRot(180.0F);
+
+                    if (rail.getRailDirection(blockstate, level, blockpos, null).equals(RailShape.NORTH_SOUTH)) {
+                        if (context.getPlayer().getZ() > wagonEntity.getZ()) {
+                            wagonEntity.setYRot(180.0F);
+                        } else {
+                            wagonEntity.setYRot(0.0F);
+                        }
+                    } else {
+                        if (context.getPlayer().getX() > wagonEntity.getX()) {
+                            wagonEntity.setYRot(90.0F);
+                        } else {
+                            wagonEntity.setYRot(270.0F);
+                        }
                     }
-                    else {
-                        wagonEntity.setYRot(0.0F);
-                    }
+
                     level.addFreshEntity(wagonEntity);
                     level.gameEvent(context.getPlayer(), GameEvent.ENTITY_PLACE, blockpos);
                 }
-                else if (rail.getRailDirection(blockstate, level, blockpos, null).equals(RailShape.EAST_WEST)) {
-                    wagonEntity.setPos(blockpos.getX() + 0.5D, blockpos.getY(), blockpos.getZ() + 0.5D);
-                    if (context.getPlayer().getX() > wagonEntity.getX()) {
-                        wagonEntity.setYRot(90.0F);
-                    }
-                    else {
-                        wagonEntity.setYRot(270.0F);
-                    }
-                    level.addFreshEntity(wagonEntity);
-                    level.gameEvent(context.getPlayer(), GameEvent.ENTITY_PLACE, blockpos);
-                }
-            }
 
-            itemstack.shrink(1);
+                itemstack.shrink(1);
+            } else return InteractionResult.FAIL;
+
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
     }

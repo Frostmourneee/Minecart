@@ -726,7 +726,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static boolean isRail(BlockState blockState) {
         return blockState.is(Blocks.RAIL) || blockState.is(Blocks.POWERED_RAIL) || blockState.is(Blocks.ACTIVATOR_RAIL) || blockState.is(Blocks.DETECTOR_RAIL);
     }
-    public boolean railIsRotating(RailShape shape) {
+    public static boolean railIsRotating(RailShape shape) {
         return shape.equals(RailShape.NORTH_EAST) || shape.equals(RailShape.NORTH_WEST) || shape.equals(RailShape.SOUTH_EAST) || shape.equals(RailShape.SOUTH_WEST);
     }
     public RailShape anyRailShape(BlockState blockState, BlockPos blockPos) {
