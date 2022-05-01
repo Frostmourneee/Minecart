@@ -31,7 +31,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.frostmourneee.minecart.ccUtil.customPrint;
 import static com.frostmourneee.minecart.core.init.ccItemInit.LOCOMOTIVE_ITEM;
 import static com.frostmourneee.minecart.core.init.ccItemInit.WAGON_ITEM;
 
@@ -69,7 +68,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
-        if (!zeroDeltaMovement()) {
+        if (!zeroDeltaHorizontal()) {
             //fix
         }
 
@@ -243,7 +242,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 }
                 case LOCOMOTIVE -> {
                     if (entity instanceof AbstractCart) {
-                        if (!zeroDeltaMovementBigIndent() && ((AbstractCart) entity).zeroDeltaMovementBigIndent()) {
+                        if (!zeroDeltaBigIndent() && ((AbstractCart) entity).zeroDeltaBigIndent()) {
                             if (hasBackCart) {
                                 backCart.resetFront();
                                 backCart.setDeltaMovement(getDeltaMovement());
@@ -256,7 +255,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                         }
                     }
                     else {
-                        if (!zeroDeltaMovementBigIndent() && ccUtil.nearZero(entity.deltaMovement, 5.0E-1)) {
+                        if (!zeroDeltaBigIndent() && ccUtil.nearZero(entity.deltaMovement, 5.0E-1)) {
                             if (hasBackCart) {
                                 backCart.resetFront();
                                 backCart.setDeltaMovement(getDeltaMovement());
@@ -668,13 +667,13 @@ public abstract class AbstractCart extends AbstractMinecart {
         return delta.y < 0;
     }
     public boolean goesFlat() {
-        if (zeroDeltaMovement() && isRail(level.getBlockState(blockPosition()))) {
+        if (zeroDelta() && isRail(level.getBlockState(blockPosition()))) {
             return !anyRailShape(level.getBlockState(blockPosition()), blockPosition()).isAscending();
         } else return ccUtil.nearZero(delta.y, 1.0E-3);
     }
 
     public boolean bothUpOrDownOrForward() {
-        if (zeroDeltaMovement() || frontCart.zeroDeltaMovement()) {
+        if (zeroDelta() || frontCart.zeroDelta()) {
             return anyRailShape(level.getBlockState(blockPosition()), blockPosition()).equals
                     (anyRailShape(frontCart.level.getBlockState(frontCart.blockPosition()), frontCart.blockPosition()));
         } else return (goesUp() && frontCart.goesUp()) ||
@@ -687,11 +686,17 @@ public abstract class AbstractCart extends AbstractMinecart {
         else return false;
     }
 
-    public boolean zeroDeltaMovement() {
+    public boolean zeroDelta() {
         return ccUtil.nearZero(delta, 1.0E-4);
     }
-    public boolean zeroDeltaMovementBigIndent() {
+    public boolean zeroDeltaBigIndent() {
         return ccUtil.nearZero(delta, 5.0E-2);
+    }
+    public boolean zeroDeltaHorizontal() {
+        return ccUtil.nearZero(delta.subtract(0.0D, delta.y, 0.0D), 1.0E-3);
+    }
+    public boolean zeroDeltaHorizontalBigIndent() {
+        return ccUtil.nearZero(delta.subtract(0.0D, delta.y, 0.0D), 5.0E-2);
     }
     public boolean isStopped() {
         return delta == Vec3.ZERO;
