@@ -69,6 +69,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
+        if (!zeroDeltaMovement()) //wefwef
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
