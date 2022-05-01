@@ -44,6 +44,7 @@ public class LocomotiveEntity extends AbstractCart {
     public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
+    ///
 
     @Override
     public void tick() {
