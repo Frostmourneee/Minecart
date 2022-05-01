@@ -3,6 +3,7 @@ package com.frostmourneee.minecart.common.entity;
 import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
 import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.core.init.ccItemInit;
+import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -10,6 +11,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
@@ -83,6 +85,9 @@ public class LocomotiveEntity extends AbstractCart {
                 itemstack.shrink(1);
             }
             fuel += 3600; //TODO change
+
+            level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.LOCOMOTIVE_START.get(),
+                    SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
         }
 
         if (fuel > 0) {
