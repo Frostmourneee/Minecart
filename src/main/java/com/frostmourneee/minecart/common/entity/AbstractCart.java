@@ -34,7 +34,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.frostmourneee.minecart.ccUtil.customPrint;
 import static com.frostmourneee.minecart.core.init.ccItemInit.LOCOMOTIVE_ITEM;
 import static com.frostmourneee.minecart.core.init.ccItemInit.WAGON_ITEM;
 
@@ -72,7 +71,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
-        if (!zeroDeltaMovement()) {
+        if (!zeroDeltaHorizontal()) {
             //fix
         }
 
