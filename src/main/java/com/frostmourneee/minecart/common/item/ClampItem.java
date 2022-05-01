@@ -7,5 +7,4 @@ public class ClampItem extends Item {
     public ClampItem(Properties properties) {
         super(properties);
     }
-
 }

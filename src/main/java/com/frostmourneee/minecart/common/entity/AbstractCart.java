@@ -1,6 +1,7 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.minecart.ccUtil;
+import com.frostmourneee.minecart.core.init.ccSoundInit;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -9,6 +10,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
@@ -69,7 +72,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
-        if (!zeroDeltaMovement()) customPrint(this, ccUtil.vecToDirection(delta));
+        if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -241,7 +244,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 }
                 case LOCOMOTIVE -> {
                     if (entity instanceof AbstractCart) {
-                        if (!zeroDeltaMovementBigIndent() && ((AbstractCart) entity).zeroDeltaMovementBigIndent()) {
+                        if (!zeroDeltaBigIndent() && ((AbstractCart) entity).zeroDeltaBigIndent()) {
                             if (hasBackCart) {
                                 backCart.resetFront();
                                 backCart.setDeltaMovement(getDeltaMovement());
@@ -254,7 +257,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                         }
                     }
                     else {
-                        if (!zeroDeltaMovementBigIndent() && ccUtil.nearZero(entity.deltaMovement, 5.0E-1)) {
+                        if (!zeroDeltaBigIndent() && ccUtil.nearZero(entity.deltaMovement, 5.0E-1)) {
                             if (hasBackCart) {
                                 backCart.resetFront();
                                 backCart.setDeltaMovement(getDeltaMovement());
@@ -666,13 +669,13 @@ public abstract class AbstractCart extends AbstractMinecart {
         return delta.y < 0;
     }
     public boolean goesFlat() {
-        if (zeroDeltaMovement() && isRail(level.getBlockState(blockPosition()))) {
+        if (zeroDelta() && isRail(level.getBlockState(blockPosition()))) {
             return !anyRailShape(level.getBlockState(blockPosition()), blockPosition()).isAscending();
         } else return ccUtil.nearZero(delta.y, 1.0E-3);
     }
 
     public boolean bothUpOrDownOrForward() {
-        if (zeroDeltaMovement() || frontCart.zeroDeltaMovement()) {
+        if (zeroDelta() || frontCart.zeroDelta()) {
             return anyRailShape(level.getBlockState(blockPosition()), blockPosition()).equals
                     (anyRailShape(frontCart.level.getBlockState(frontCart.blockPosition()), frontCart.blockPosition()));
         } else return (goesUp() && frontCart.goesUp()) ||
@@ -685,11 +688,17 @@ public abstract class AbstractCart extends AbstractMinecart {
         else return false;
     }
 
-    public boolean zeroDeltaMovement() {
+    public boolean zeroDelta() {
         return ccUtil.nearZero(delta, 1.0E-4);
     }
-    public boolean zeroDeltaMovementBigIndent() {
+    public boolean zeroDeltaBigIndent() {
         return ccUtil.nearZero(delta, 5.0E-2);
+    }
+    public boolean zeroDeltaHorizontal() {
+        return ccUtil.nearZero(delta.subtract(0.0D, delta.y, 0.0D), 1.0E-3);
+    }
+    public boolean zeroDeltaHorizontalBigIndent() {
+        return ccUtil.nearZero(delta.subtract(0.0D, delta.y, 0.0D), 5.0E-2);
     }
     public boolean isStopped() {
         return delta == Vec3.ZERO;
@@ -728,6 +737,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         return tmp;
     }
+
     public enum Type {
         WAGON,
         LOCOMOTIVE

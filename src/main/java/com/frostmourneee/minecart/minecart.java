@@ -3,6 +3,7 @@ package com.frostmourneee.minecart;
 import com.frostmourneee.minecart.core.init.ccBlockInit;
 import com.frostmourneee.minecart.core.init.ccEntityInit;
 import com.frostmourneee.minecart.core.init.ccItemInit;
+import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
@@ -21,6 +22,7 @@ public class minecart
     public minecart() {
         IEventBus eventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
+        ccSoundInit.SOUNDS.register(eventBus);
         ccBlockInit.BLOCKS.register(eventBus);
         ccItemInit.ITEMS.register(eventBus);
         ccEntityInit.ENTITIES.register(eventBus);
