@@ -1,9 +1,9 @@
 package com.frostmourneee.minecart.common.entity;
 
-import com.frostmourneee.minecart.core.ccUtil;
-import com.frostmourneee.minecart.core.init.ccItemInit;
+import com.frostmourneee.minecart.ccUtil;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -20,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.PoweredRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.frostmourneee.minecart.ccUtil.customPrint;
 import static com.frostmourneee.minecart.core.init.ccItemInit.LOCOMOTIVE_ITEM;
 import static com.frostmourneee.minecart.core.init.ccItemInit.WAGON_ITEM;
 
@@ -39,94 +41,101 @@ public abstract class AbstractCart extends AbstractMinecart {
         super(entityType, level);
     }
 
-    //public static final EntityDataAccessor<Boolean> DATA_CLAMP_OR_NOT = SynchedEntityData.defineId(WagonEntity.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_BACKCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
-    public static final EntityDataAccessor<Float> DATA_HORIZONTAL_ROTATION_ANGLE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.FLOAT);
-    public static final EntityDataAccessor<Float> DATA_VERTICAL_ROTATION_ANGLE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.FLOAT);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
 
-    public float horAngle; //CLIENTSIDE ONLY
-    public float vertAngle; //CLIENTSIDE ONLY
-    public BlockPos posOfBackCart;
+    public Vec3 delta = Vec3.ZERO;
+    public ArrayList<Integer> verticalMovementType = new ArrayList<>(); //1 = up; 0 = flat; -1 = down
+    public boolean isPosCorrected = true;
+
+    public BlockPos posOfBackCart = new BlockPos(0, 0, 0);
     public boolean hasBackCart = false;
-    public BlockPos posOfFrontCart;
+    public BlockPos posOfFrontCart = new BlockPos(0, 0, 0);
     public boolean hasFrontCart = false;
 
-    public boolean debugMode = true; //TODO remove debug
+    public boolean debugMode = false; //TODO remove debug
+    public int debugCounter = 0;
 
     public AbstractCart backCart = null;
     public AbstractCart frontCart = null;
 
     @Override
     public void tick() {
-        this.vanillaTick();
+        vanillaTick();
 
         //My code starts
-        this.collisionProcessing();
+        delta = position().subtract(xOld, yOld, zOld);
+        verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
+        if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
+        if (!zeroDeltaMovement()) customPrint(this, ccUtil.vecToDirection(delta));
+
+        restoreRelativeCarts();
+        posCorrectionToFrontCart();
+        collisionProcessing();
     }
 
     public void vanillaTick() {
-        if (this.getHurtTime() > 0) {
-            this.setHurtTime(this.getHurtTime() - 1);
+        if (getHurtTime() > 0) {
+            setHurtTime(getHurtTime() - 1);
         }
 
-        if (this.getDamage() > 0.0F) {
-            this.setDamage(this.getDamage() - 1.0F);
+        if (getDamage() > 0.0F) {
+            setDamage(getDamage() - 1.0F);
         }
 
-        this.checkOutOfWorld();
-        this.handleNetherPortal();
-        if (this.level.isClientSide) {
-            if (this.lSteps > 0) {
-                double d5 = this.getX() + (this.lx - this.getX()) / (double)this.lSteps;
-                double d6 = this.getY() + (this.ly - this.getY()) / (double)this.lSteps;
-                double d7 = this.getZ() + (this.lz - this.getZ()) / (double)this.lSteps;
-                --this.lSteps;
-                this.setPos(d5, d6, d7);
+        checkOutOfWorld();
+        handleNetherPortal();
+        if (level.isClientSide) {
+            if (lSteps > 0) {
+                double d5 = getX() + (lx - getX()) / (double)lSteps;
+                double d6 = getY() + (ly - getY()) / (double)lSteps;
+                double d7 = getZ() + (lz - getZ()) / (double)lSteps;
+                --lSteps;
+                setPos(d5, d6, d7);
             } else {
-                this.reapplyPosition();
+                reapplyPosition();
             }
 
         } else {
-            if (!this.isNoGravity()) {
-                double d0 = this.isInWater() ? -0.005D : -0.04D;
-                this.setDeltaMovement(this.getDeltaMovement().add(0.0D, d0, 0.0D));
+            if (!isNoGravity()) {
+                double d0 = isInWater() ? -0.005D : -0.04D;
+                setDeltaMovement(getDeltaMovement().add(0.0D, d0, 0.0D));
             }
 
-            int k = Mth.floor(this.getX());
-            int i = Mth.floor(this.getY());
-            int j = Mth.floor(this.getZ());
-            if (this.level.getBlockState(new BlockPos(k, i - 1, j)).is(BlockTags.RAILS)) {
+            int k = Mth.floor(getX());
+            int i = Mth.floor(getY());
+            int j = Mth.floor(getZ());
+            if (level.getBlockState(new BlockPos(k, i - 1, j)).is(BlockTags.RAILS)) {
                 --i;
             }
 
             BlockPos blockpos = new BlockPos(k, i, j);
-            BlockState blockstate = this.level.getBlockState(blockpos);
+            BlockState blockstate = level.getBlockState(blockpos);
             if (canUseRail() && BaseRailBlock.isRail(blockstate)) {
-                this.moveAlongTrack(blockpos, blockstate);
+                moveAlongTrack(blockpos, blockstate);
                 if (blockstate.getBlock() instanceof PoweredRailBlock && ((PoweredRailBlock) blockstate.getBlock()).isActivatorRail()) {
-                    this.activateMinecart(k, i, j, blockstate.getValue(PoweredRailBlock.POWERED));
+                    activateMinecart(k, i, j, blockstate.getValue(PoweredRailBlock.POWERED));
                 }
             } else {
-                this.comeOffTrack();
+                comeOffTrack();
             }
 
-            this.checkInsideBlocks();
+            checkInsideBlocks();
 
-            double d4 = Mth.wrapDegrees(this.getYRot() - this.yRotO);
+            double d4 = Mth.wrapDegrees(getYRot() - yRotO);
             if (d4 < -170.0D || d4 >= 170.0D) {
-                this.flipped = !this.flipped;
+                flipped = !flipped;
             }
 
-            this.updateInWaterStateAndDoFluidPushing();
-            if (this.isInLava()) {
-                this.lavaHurt();
-                this.fallDistance *= 0.5F;
+            updateInWaterStateAndDoFluidPushing();
+            if (isInLava()) {
+                lavaHurt();
+                fallDistance *= 0.5F;
             }
 
-            this.firstTick = false;
+            firstTick = false;
         }
     }
 
@@ -134,13 +143,13 @@ public abstract class AbstractCart extends AbstractMinecart {
         AABB box;
 
         if (getCollisionHandler() != null) box = getCollisionHandler().getMinecartCollisionBox(this);
-        else box = this.getBoundingBox().inflate(0.2D, 0.0D, 0.2D);
+        else box = getBoundingBox().inflate(0.2D, 0.0D, 0.2D);
 
-        if (canBeRidden() && this.getDeltaMovement().horizontalDistanceSqr() > 0.01D) {
-            List<Entity> list = this.level.getEntities(this, box, EntitySelector.pushableBy(this));
+        if (canBeRidden() && deltaMovement.horizontalDistanceSqr() > 0.01D) {
+            List<Entity> list = level.getEntities(this, box, EntitySelector.pushableBy(this));
             if (!list.isEmpty()) {
                 for (Entity entity1 : list) {
-                    if (!(entity1 instanceof Player) && !(entity1 instanceof IronGolem) && !(entity1 instanceof AbstractMinecart) && !this.isVehicle() && !entity1.isPassenger()) {
+                    if (!(entity1 instanceof Player) && !(entity1 instanceof IronGolem) && !(entity1 instanceof AbstractMinecart) && !isVehicle() && !entity1.isPassenger()) {
                         entity1.startRiding(this);
                     } else {
                         entityPushingBySelf(entity1);
@@ -148,10 +157,10 @@ public abstract class AbstractCart extends AbstractMinecart {
                 }
             }
         } else {
-            for(Entity entity : this.level.getEntities(this, box)) {
-                if (!this.hasPassenger(entity) && entity.isPushable() && entity instanceof AbstractMinecart) {
+            for(Entity entity : level.getEntities(this, box)) {
+                if (!hasPassenger(entity) && entity.isPushable() && entity instanceof AbstractMinecart) {
                     if (!entity.isPassengerOfSameVehicle(this)) {
-                        if (!entity.noPhysics && !this.noPhysics) {
+                        if (!entity.noPhysics && !noPhysics) {
                             selfPushingByEntity(entity);
                         }
                     }
@@ -161,8 +170,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
 
     public void entityPushingBySelf(Entity entity) {
-        double d0 = this.getX() - entity.getX();
-        double d1 = this.getZ() - entity.getZ();
+        double d0 = getX() - entity.getX();
+        double d1 = getZ() - entity.getZ();
         double d2 = Mth.absMax(d0, d1);
 
         if (d2 >= (double) 0.01F) {
@@ -180,34 +189,26 @@ public abstract class AbstractCart extends AbstractMinecart {
             d0 *= 0.05F;
             d1 *= 0.05F;
 
-            switch (getCartType()) {
-                case WAGON -> {
-                    if (!entity.isVehicle()) {
-                        if ((entity instanceof WagonEntity && ((WagonEntity) entity).backCart == null) ||
-                                (entity instanceof LocomotiveEntity && ((LocomotiveEntity) entity).backCart == null)) {
-                            entity.push(-d0, 0.0D, -d1);
-                        } else if (!(entity instanceof WagonEntity) && !(entity instanceof LocomotiveEntity)) {
-                            entity.push(-d0, 0.0D, -d1);
-                        }
-                    }
-                    if (!this.isVehicle() && this.backCart == null && !this.hasFrontCart) {
-                        this.push(d0 / 5, 0.0D, d1 / 5); //TODO change
-                    }
+            if (!entity.isVehicle()) {
+                if ((entity instanceof AbstractCart && !((AbstractCart)entity).hasFrontCart && !((AbstractCart)entity).hasBackCart)) {
+                    entity.push(-d0, 0.0D, -d1);
+                } else if (!(entity instanceof AbstractCart)) {
+                    entity.push(-d0, 0.0D, -d1);
                 }
-                case LOCOMOTIVE -> {
-                    if (!entity.isVehicle()) {
-                        entity.push(-d0, 0.0D, -d1);
-                    }
-                    if (!this.isVehicle() && this.backCart == null) {
-                        this.push(d0, 0.0D, d1);
+            }
+
+            switch (getCartType()) {
+                case WAGON, LOCOMOTIVE -> {
+                    if (!isVehicle() && !hasBackCart && !hasFrontCart) {
+                        push(d0, 0.0D, d1); //TODO change
                     }
                 }
             }
         }
     }
     public void selfPushingByEntity(Entity entity) {
-        double d0 = this.getX() - entity.getX();
-        double d1 = this.getZ() - entity.getZ();
+        double d0 = getX() - entity.getX();
+        double d1 = getZ() - entity.getZ();
         double d2 = Mth.absMax(d0, d1);
         if (d2 >= (double)0.01F) {
             d2 = Math.sqrt(d2);
@@ -225,78 +226,129 @@ public abstract class AbstractCart extends AbstractMinecart {
             d1 *= 0.05F;
 
             if (!entity.isVehicle()) {
-                if (entity instanceof AbstractCart && ((AbstractCart) entity).backCart == null) {
+                if (entity instanceof AbstractCart && !((AbstractCart) entity).hasBackCart && !((AbstractCart) entity).hasFrontCart) {
                     entity.push(-d0, 0.0D, -d1);
                 } else if (!(entity instanceof AbstractCart)) {
                     entity.push(-d0, 0.0D, -d1);
                 }
             }
 
-            switch (this.getCartType()) {
+            switch (getCartType()) {
                 case WAGON -> {
-                    if (!this.isVehicle() && this.backCart == null && !this.hasFrontCart) {
-                        this.push(d0 / 5, 0.0D, d1 / 5); //TODO change
+                    if (!isVehicle() && !hasBackCart && !hasFrontCart) {
+                        push(d0 / 5, 0.0D, d1 / 5); //TODO change
                     }
                 }
                 case LOCOMOTIVE -> {
-                    if (!ccUtil.zeroDeltaMovementBigIndent(this) && ccUtil.zeroDeltaMovementBigIndent((AbstractMinecart) entity)) {
-                        if (this.backCart != null) {
-                            this.backCart.resetFront();
-                            this.backCart.setDeltaMovement(this.getDeltaMovement());
-                        }
+                    if (entity instanceof AbstractCart) {
+                        if (!zeroDeltaMovementBigIndent() && ((AbstractCart) entity).zeroDeltaMovementBigIndent()) {
+                            if (hasBackCart) {
+                                backCart.resetFront();
+                                backCart.setDeltaMovement(getDeltaMovement());
+                            }
 
-                        this.remove(RemovalReason.KILLED);
-                        if (this.level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                            this.spawnAtLocation(LOCOMOTIVE_ITEM.get());
+                            remove(RemovalReason.KILLED);
+                            if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                                spawnAtLocation(LOCOMOTIVE_ITEM.get());
+                            }
+                        }
+                    }
+                    else {
+                        if (!zeroDeltaMovementBigIndent() && ccUtil.nearZero(entity.deltaMovement, 5.0E-1)) {
+                            if (hasBackCart) {
+                                backCart.resetFront();
+                                backCart.setDeltaMovement(getDeltaMovement());
+                            }
+
+                            remove(RemovalReason.KILLED);
+                            if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                                spawnAtLocation(LOCOMOTIVE_ITEM.get());
+                            }
                         }
                     }
                 }
             }
         }
     }
+    @Override
+    public void push(double d1, double d2, double d3) {
+        if (!hasBackCart && !hasFrontCart) {
+            this.setDeltaMovement(this.getDeltaMovement().add(d1, d2, d3));
+            this.hasImpulse = true;
+        }
+    }
 
     public abstract AbstractCart.Type getCartType();
 
     public void resetFront() {
-        this.entityData.set(DATA_FRONTCART_EXISTS, false);
-        this.hasFrontCart = false;
-        this.frontCart = null;
+        entityData.set(DATA_FRONTCART_EXISTS, false);
+        hasFrontCart = false;
+        frontCart = null;
     }
     public void resetBack() {
-        this.entityData.set(DATA_BACKCART_EXISTS, false);
-        this.hasBackCart = false;
-        this.backCart = null;
+        entityData.set(DATA_BACKCART_EXISTS, false);
+        hasBackCart = false;
+        backCart = null;
     }
     public void resetFull() {
-        this.resetFront();
-        this.resetBack();
+        resetFront();
+        resetBack();
     }
-
     public void connectFront(AbstractCart cart) {
-        this.frontCart = cart;
-        this.hasFrontCart = true;
-        this.entityData.set(DATA_FRONTCART_EXISTS, true);
+        frontCart = cart;
+        hasFrontCart = true;
+        entityData.set(DATA_FRONTCART_EXISTS, true);
     }
     public void connectBack(AbstractCart cart) {
-        this.backCart = cart;
-        this.hasBackCart = true;
-        this.entityData.set(DATA_BACKCART_EXISTS, true);
+        backCart = cart;
+        hasBackCart = true;
+        entityData.set(DATA_BACKCART_EXISTS, true);
     }
 
+    public void posCorrectionToFrontCart() {
+        if (hasFrontCart && verticalMovementType.size() == 2) {
+            if (!verticalMovementType.get(0).equals(verticalMovementType.get(1))) {
+                isPosCorrected = false;
+            }
+            double dist = frontCart.position().subtract(position()).length();
+
+            if (!isPosCorrected) {
+                if (ccUtil.nearZero(dist - 2.298D, 1.0E-1)) {
+                    if (goesUp()) {
+                        setPos(frontCart.position().add(frontCart.oppDirToVec3().subtract(0.0D, 1.0D, 0.0D).scale(1.149D)));
+                    }
+                    if (goesDown()) {
+                        setPos(frontCart.position().add(frontCart.oppDirToVec3().add(0.0D, 1.0D, 0.0D).scale(1.149D)));
+                    }
+                    isPosCorrected = true;
+                }
+                if (isOnHorizontalLine()) {
+                    setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
+                    isPosCorrected = true;
+                }
+            }
+
+        }
+    }
+    public Vec3 oppDirToVec3() {
+        return new Vec3(getDirection().getOpposite().getNormal().getX(),
+                getDirection().getOpposite().getNormal().getY(),
+                getDirection().getOpposite().getNormal().getZ());
+    }
     @Override
     public Vec3 getPos(double x, double y, double z) { //Used in Renderer class
         int i = Mth.floor(x);
         int j = Mth.floor(y);
         int k = Mth.floor(z);
-        if (this.level.getBlockState(new BlockPos(i, j + 1, k)).is(BlockTags.RAILS)) {
+        if (level.getBlockState(new BlockPos(i, j + 1, k)).is(BlockTags.RAILS)) {
             ++j;
-        } else if (this.level.getBlockState(new BlockPos(i, j - 1, k)).is(BlockTags.RAILS)) {
+        } else if (level.getBlockState(new BlockPos(i, j - 1, k)).is(BlockTags.RAILS)) {
             --j;
         }
 
-        BlockState blockstate = this.level.getBlockState(new BlockPos(i, j, k));
+        BlockState blockstate = level.getBlockState(new BlockPos(i, j, k));
         if (BaseRailBlock.isRail(blockstate)) {
-            RailShape railshape = ((BaseRailBlock)blockstate.getBlock()).getRailDirection(blockstate, this.level, new BlockPos(i, j, k), this);
+            RailShape railshape = ((BaseRailBlock)blockstate.getBlock()).getRailDirection(blockstate, level, new BlockPos(i, j, k), this);
             Pair<Vec3i, Vec3i> pair = exits(railshape);
             Vec3i vec3i = pair.getFirst();
             Vec3i vec3i1 = pair.getSecond();
@@ -339,15 +391,15 @@ public abstract class AbstractCart extends AbstractMinecart {
         int i = Mth.floor(x);
         int j = Mth.floor(y);
         int k = Mth.floor(z);
-        if (this.level.getBlockState(new BlockPos(i, j + 1, k)).is(BlockTags.RAILS)) {
+        if (level.getBlockState(new BlockPos(i, j + 1, k)).is(BlockTags.RAILS)) {
             ++j;
-        } else if (this.level.getBlockState(new BlockPos(i, j - 1, k)).is(BlockTags.RAILS)) {
+        } else if (level.getBlockState(new BlockPos(i, j - 1, k)).is(BlockTags.RAILS)) {
             --j;
         }
 
-        BlockState blockstate = this.level.getBlockState(new BlockPos(i, j, k));
+        BlockState blockstate = level.getBlockState(new BlockPos(i, j, k));
         if (BaseRailBlock.isRail(blockstate)) {
-            RailShape railshape = ((BaseRailBlock)blockstate.getBlock()).getRailDirection(blockstate, this.level, new BlockPos(i, j, k), this);
+            RailShape railshape = ((BaseRailBlock)blockstate.getBlock()).getRailDirection(blockstate, level, new BlockPos(i, j, k), this);
             y = j;
             if (railshape.isAscending()) {
                 y = j + 1;
@@ -369,86 +421,88 @@ public abstract class AbstractCart extends AbstractMinecart {
                 y += vec3i1.getY();
             }
 
-            return this.getPos(x, y, z);
+            return getPos(x, y, z);
         } else {
             return null;
         }
     }
 
     public void tryingToClamp() {
-
         ArrayList<AbstractCart> frontAbstractCart;
-        frontAbstractCart = this.frontOnRailCart(new BlockPos(this.position()));
-
+        AABB areaOfSearch = ccUtil.getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
+        frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 3 FRONT BLOCKS
         frontAbstractCart.removeIf(cart -> cart.equals(this));
 
-        if (!frontAbstractCart.isEmpty()) this.connection(frontAbstractCart);
-    }
-    public ArrayList<AbstractCart> frontOnRailCart(BlockPos blockPos) {
-        return (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
-                new AABB(blockPos.relative(this.getDirection())).inflate(0.9D, 0.0D, 0.9D));
+        if (!frontAbstractCart.isEmpty()) {
+            connection(frontAbstractCart);
+        }
     }
     public void connection(ArrayList<AbstractCart> frontAbstractCart) {
-
-        if (frontAbstractCart.get(0).getDirection().equals(this.getDirection())) {
-
-            this.connectFront(frontAbstractCart.get(0));
-            this.frontCart.connectBack(this);
-
-            switch (this.getDirection()) {
-                case EAST -> this.setPos(this.frontCart.position().add(-1.625D, 0.0D, 0.0D));
-                case NORTH -> this.setPos(this.frontCart.position().add(0.0D, 0.0D, 1.625D));
-                case WEST -> this.setPos(this.frontCart.position().add(1.625D, 0.0D, 0.0D));
-                case SOUTH -> this.setPos(this.frontCart.position().add(0.0D, 0.0D, -1.625D));
+        for (int i = 1; i < frontAbstractCart.size(); i++) { //SEARCHING FOR THE NEAREST
+            if (frontAbstractCart.get(i).distanceTo(this) < frontAbstractCart.get(0).distanceTo(this)) {
+                frontAbstractCart.set(0, frontAbstractCart.get(i));
             }
-            this.setDeltaMovement(Vec3.ZERO);
+        }
+
+        if (frontAbstractCart.get(0).getDirection().equals(getDirection())) {
+            setDeltaMovement(Vec3.ZERO);
+            connectFront(frontAbstractCart.get(0));
+            frontCart.setDeltaMovement(Vec3.ZERO);
+            frontCart.connectBack(this);
+            setPos(frontCart.position().add(oppDirToVec3().scale(1.625D)));
+
+            AbstractCart cart = this; //PULLING BACK CARTS UP TO CORRECT COORDS
+            while (cart.backCart != null) {
+                cart = cart.backCart;
+                cart.setPos(cart.frontCart.position().add(oppDirToVec3().scale(1.625D)));
+            }
         }
     }
 
     @Override
     protected void comeOffTrack() {
-        if (this.backCart != null) {
-            this.backCart.resetFront();
-            this.backCart.setDeltaMovement(this.getDeltaMovement());
-            this.resetBack();
+        if (backCart != null) {
+            backCart.resetFront();
+            backCart.setDeltaMovement(getDeltaMovement());
+            resetBack();
         }
 
-        if (this.frontCart != null) {
-            this.frontCart.resetBack();
-            this.resetFront();
+        if (frontCart != null) {
+            frontCart.resetBack();
+            resetFront();
         }
 
-        this.remove(RemovalReason.KILLED);
-        if (this.level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-            switch (this.getCartType()) {
-                case WAGON -> this.spawnAtLocation(WAGON_ITEM.get());
-                case LOCOMOTIVE -> this.spawnAtLocation(LOCOMOTIVE_ITEM.get());
+        remove(RemovalReason.KILLED);
+        if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+            switch (getCartType()) {
+                case WAGON -> spawnAtLocation(WAGON_ITEM.get());
+                case LOCOMOTIVE -> spawnAtLocation(LOCOMOTIVE_ITEM.get());
             }
         }
     }
     @Override
     public void discard() { //in creative
-        if (this.hasBackCart) this.backCart.resetFront();
-        if (this.hasFrontCart) this.frontCart.resetBack();
-        this.remove(Entity.RemovalReason.DISCARDED);
+        if (hasBackCart) backCart.resetFront();
+        if (hasFrontCart) frontCart.resetBack();
+        remove(Entity.RemovalReason.DISCARDED);
     }
     @Override
     public void destroy(@NotNull DamageSource damageSource) { //in survival
-        if (this.hasBackCart) this.backCart.resetFront();
-        if (this.hasFrontCart) this.frontCart.resetBack();
-        this.remove(Entity.RemovalReason.KILLED);
+        if (hasBackCart) backCart.resetFront();
+        if (hasFrontCart) frontCart.resetBack();
+        remove(Entity.RemovalReason.KILLED);
 
-        if (this.level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-            switch (this.getCartType()) {
-                case WAGON -> this.spawnAtLocation(WAGON_ITEM.get());
-                case LOCOMOTIVE -> this.spawnAtLocation(LOCOMOTIVE_ITEM.get());
+        if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+            switch (getCartType()) {
+                case WAGON -> spawnAtLocation(WAGON_ITEM.get());
+                case LOCOMOTIVE -> spawnAtLocation(LOCOMOTIVE_ITEM.get());
             }
         }
     }
 
     @Override
     public ItemStack getPickResult() {
-        return switch (this.getCartType()) {
+        return switch (getCartType()) {
             case WAGON ->  new ItemStack(WAGON_ITEM.get());
             case LOCOMOTIVE -> new ItemStack(LOCOMOTIVE_ITEM.get());
         };
@@ -458,69 +512,60 @@ public abstract class AbstractCart extends AbstractMinecart {
     protected void defineSynchedData() {
         super.defineSynchedData();
 
-        this.entityData.define(DATA_FRONTCART_EXISTS, false);
-        this.entityData.define(DATA_BACKCART_EXISTS, false);
-        this.entityData.define(DATA_DEBUG_MODE, true);
-
-        this.entityData.define(DATA_HORIZONTAL_ROTATION_ANGLE, 0.0F);
-        this.entityData.define(DATA_VERTICAL_ROTATION_ANGLE, 0.0F);
+        entityData.define(DATA_FRONTCART_EXISTS, false);
+        entityData.define(DATA_BACKCART_EXISTS, false);
+        entityData.define(DATA_DEBUG_MODE, false);
     } //TODO remove debug
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.addAdditionalSaveData(compoundTag);
 
-        compoundTag.putBoolean("HasFrontCart", this.hasFrontCart);
-        compoundTag.putBoolean("HasBackCart", this.hasBackCart);
-        compoundTag.putBoolean("Debug", this.debugMode);
-        compoundTag.putFloat("HorAngle", this.entityData.get(DATA_HORIZONTAL_ROTATION_ANGLE));
-        compoundTag.putFloat("VertAngle", this.entityData.get(DATA_VERTICAL_ROTATION_ANGLE));
+        compoundTag.putBoolean("HasFrontCart", hasFrontCart);
+        compoundTag.putBoolean("HasBackCart", hasBackCart);
+        compoundTag.putBoolean("Debug", debugMode);
 
-        this.saveNearCartData(this.backCart, compoundTag, "BackCartExists", DATA_BACKCART_EXISTS);
-        this.saveNearCartData(this.frontCart, compoundTag, "FrontCartExists", DATA_FRONTCART_EXISTS);
+        saveNearCartData(backCart, compoundTag, "BackCartExists", DATA_BACKCART_EXISTS);
+        saveNearCartData(frontCart, compoundTag, "FrontCartExists", DATA_FRONTCART_EXISTS);
     } //TODO remove debug
     @Override
     protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.readAdditionalSaveData(compoundTag);
 
-        this.debugMode = compoundTag.getBoolean("Debug");
-        this.entityData.set(DATA_DEBUG_MODE, this.debugMode);
-        this.horAngle = compoundTag.getFloat("HorAngle");
-        this.entityData.set(DATA_HORIZONTAL_ROTATION_ANGLE, this.horAngle);
-        this.vertAngle = compoundTag.getFloat("VertAngle");
-        this.entityData.set(DATA_VERTICAL_ROTATION_ANGLE, this.vertAngle);
-        this.hasFrontCart = compoundTag.getBoolean("FrontCartExists");
-        this.entityData.set(DATA_FRONTCART_EXISTS, hasFrontCart);
-        this.hasBackCart = compoundTag.getBoolean("BackCartExists");
-        this.entityData.set(DATA_BACKCART_EXISTS, hasBackCart);
+        debugMode = compoundTag.getBoolean("Debug");
+        entityData.set(DATA_DEBUG_MODE, debugMode);
+        hasFrontCart = compoundTag.getBoolean("FrontCartExists");
+        entityData.set(DATA_FRONTCART_EXISTS, hasFrontCart);
+        hasBackCart = compoundTag.getBoolean("BackCartExists");
+        entityData.set(DATA_BACKCART_EXISTS, hasBackCart);
 
-        if (hasBackCart) {
+        if (compoundTag.getBoolean("BackCartExists")) {
             int[] cartPos;
             cartPos = compoundTag.getIntArray("BackCartExistsPos");
-            this.posOfBackCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
+            posOfBackCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
 
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(this.posOfBackCart));
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfBackCart));
             if (!rangeCart.isEmpty()) {
                 AbstractCart backCart = rangeCart.get(0);
                 backCart.connectFront(this);
-                this.connectBack(backCart);
+                connectBack(backCart);
             }
         }
 
-        if (hasFrontCart) {
+        if (compoundTag.getBoolean("FrontCartExists")) {
             int[] cartPos;
             cartPos = compoundTag.getIntArray("FrontCartExistsPos");
-            this.posOfFrontCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
+            posOfFrontCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
 
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(this.posOfFrontCart));
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfFrontCart));
             if (!rangeCart.isEmpty()) {
                 AbstractCart frontCart = rangeCart.get(0);
                 frontCart.connectBack(this);
-                this.connectFront(frontCart);
+                connectFront(frontCart);
             }
         }
     } //TODO remove debug
     public void saveNearCartData(AbstractCart cart, CompoundTag compoundTag, String name, EntityDataAccessor<Boolean> accessor) {
-        if (this.entityData.get(accessor) && cart != null) {
+        if (entityData.get(accessor) && cart != null) {
             compoundTag.putBoolean(name, true);
             int[] cartPos = new int[3];
             cartPos[0] = cart.getBlockX();
@@ -529,6 +574,25 @@ public abstract class AbstractCart extends AbstractMinecart {
             compoundTag.putIntArray(name + "Pos", cartPos);
         } else {
             compoundTag.putBoolean(name, false);
+        }
+    }
+    public void restoreRelativeCarts() {
+        if (backCart == null && hasBackCart) {
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfBackCart));
+            if (!rangeCart.isEmpty()) {
+                AbstractCart backCart = rangeCart.get(0);
+                backCart.connectFront(this);
+                connectBack(backCart);
+            }
+        }
+
+        if (frontCart == null && hasFrontCart) {
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfFrontCart));
+            if (!rangeCart.isEmpty()) {
+                AbstractCart frontCart = rangeCart.get(0);
+                frontCart.connectBack(this);
+                connectFront(frontCart);
+            }
         }
     }
 
@@ -543,6 +607,17 @@ public abstract class AbstractCart extends AbstractMinecart {
             return null;
         }
     }
+    public AbstractCart getFirstCart() {
+        AbstractCart cart = this;
+        while (cart.frontCart != null) {
+            cart = cart.frontCart;
+        }
+        if (cart.getCartType() == Type.LOCOMOTIVE) {
+            return cart.backCart;
+        } else {
+            return cart;
+        }
+    }
     public AbstractCart getLastCart() {
         AbstractCart cart = this;
         while (cart.backCart != null) {
@@ -550,14 +625,109 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         return cart;
     }
-    /*public int wagonsLength() {
-        //TODO realize
+
+    public int cartsAhead() {
+        int i = 0;
+        AbstractCart cart = this;
+
+        while (cart.frontCart != null) {
+            cart = cart.frontCart;
+            i++;
+        }
+        return i;
+    }
+    public int cartsBehind() {
+        int i = 0;
+        AbstractCart cart = this;
+
+        while (cart.backCart != null) {
+            cart = cart.backCart;
+            i++;
+        }
+        return i;
+    }
+    public int wagonsAhead() {
+        return getLocomotive() == null ? cartsAhead() : cartsAhead() - 1;
+    }
+    public int wagonsBehind() {
+        return cartsBehind();
+    }
+    public int wagonsLength() {
+        return wagonsAhead() + wagonsBehind() + 1;
     } //SERVER ONLY
     public int trainLength() {
-        if (this.recursiveLocomotive() != null) return this.wagonsLength(1) + 1;
-            else return wagonsLength(1);
-    }*/
+        return getLocomotive() == null ? wagonsLength() : wagonsLength() + 1;
+    }
 
+    public boolean goesUp() {
+        return delta.y > 0;
+    }
+    public boolean goesDown() {
+        return delta.y < 0;
+    }
+    public boolean goesFlat() {
+        if (zeroDeltaMovement() && isRail(level.getBlockState(blockPosition()))) {
+            return !anyRailShape(level.getBlockState(blockPosition()), blockPosition()).isAscending();
+        } else return ccUtil.nearZero(delta.y, 1.0E-3);
+    }
+
+    public boolean bothUpOrDownOrForward() {
+        if (zeroDeltaMovement() || frontCart.zeroDeltaMovement()) {
+            return anyRailShape(level.getBlockState(blockPosition()), blockPosition()).equals
+                    (anyRailShape(frontCart.level.getBlockState(frontCart.blockPosition()), frontCart.blockPosition()));
+        } else return (goesUp() && frontCart.goesUp()) ||
+                    (goesDown() && frontCart.goesDown()) ||
+                    (goesFlat() && frontCart.goesFlat());
+    }
+    public boolean isOnHorizontalLine() {
+        if (hasFrontCart) return Math.abs(getY() - frontCart.getY()) < 1.0E-4
+                && (Math.abs(getX() - frontCart.getX()) < 1.0E-4 || Math.abs(getZ() - frontCart.getZ()) < 1.0E-4);
+        else return false;
+    }
+
+    public boolean zeroDeltaMovement() {
+        return ccUtil.nearZero(delta, 1.0E-4);
+    }
+    public boolean zeroDeltaMovementBigIndent() {
+        return ccUtil.nearZero(delta, 5.0E-2);
+    }
+    public boolean isStopped() {
+        return delta == Vec3.ZERO;
+    }
+    public boolean isRotating() {
+        BlockPos blockPos = getOnPos().above();
+        BlockState blockState = level.getBlockState(blockPos);
+
+        if (isRail(blockState)) {
+            RailShape shape = anyRailShape(blockState, blockPos);
+            return railIsRotating(shape);
+        } else return false;
+    }
+
+    public static boolean isRail(BlockState blockState) {
+        return blockState.is(Blocks.RAIL) || blockState.is(Blocks.POWERED_RAIL) || blockState.is(Blocks.ACTIVATOR_RAIL) || blockState.is(Blocks.DETECTOR_RAIL);
+    }
+    public boolean railIsRotating(RailShape shape) {
+        return shape.equals(RailShape.NORTH_EAST) || shape.equals(RailShape.NORTH_WEST) || shape.equals(RailShape.SOUTH_EAST) || shape.equals(RailShape.SOUTH_WEST);
+    }
+    public RailShape anyRailShape(BlockState blockState, BlockPos blockPos) {
+        if (isRail(blockState)) return ((BaseRailBlock)blockState.getBlock())
+                .getRailDirection(blockState, this.level, blockPos, this);
+        else return null;
+    }
+
+    public static ArrayList<BlockPos> nearsBlockPos(BlockPos blockPos) {
+        ArrayList<BlockPos> tmp = new ArrayList<>();
+
+        tmp.add(blockPos.relative(Direction.UP));
+        tmp.add(blockPos.relative(Direction.EAST));
+        tmp.add(blockPos.relative(Direction.NORTH));
+        tmp.add(blockPos.relative(Direction.WEST));
+        tmp.add(blockPos.relative(Direction.SOUTH));
+        tmp.add(blockPos.relative(Direction.DOWN));
+
+        return tmp;
+    }
     public enum Type {
         WAGON,
         LOCOMOTIVE

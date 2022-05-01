@@ -1,32 +1,25 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
-import com.frostmourneee.minecart.core.ccUtil;
+import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.core.init.ccItemInit;
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Vec3i;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
@@ -35,7 +28,6 @@ import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
-import java.util.List;
 
 import static net.minecraft.world.level.block.HopperBlock.FACING;
 
@@ -47,9 +39,9 @@ public class LocomotiveEntity extends AbstractCart {
 
     public static final EntityDataAccessor<Boolean> DATA_ID_FUEL = SynchedEntityData.defineId(LocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
 
-    private int fuel;
-    public double xPush;
-    public double zPush;
+    private int fuel = 0;
+    public double xPush = 0.0D;
+    public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
 
@@ -58,27 +50,27 @@ public class LocomotiveEntity extends AbstractCart {
         super.tick();
 
         //My code starts
-        Vec3 delta = this.getDeltaMovement();
+        Vec3 delta = getDeltaMovement();
 
-        this.stopBeforeTurnWhenSlow(delta);
-        this.fuelControl();
-        this.smokeAnim();
-        this.addFuelByHopper(72); //TODO change
+        stopBeforeTurnWhenSlow(delta);
+        fuelControl();
+        smokeAnim();
+        addFuelByHopper(72); //TODO change
     }
 
     @Override
     protected void moveAlongTrack(BlockPos blockPos, BlockState blockState) {
         super.moveAlongTrack(blockPos, blockState);
 
-        Vec3 vec3 = this.getDeltaMovement();
+        Vec3 vec3 = getDeltaMovement();
         double d2 = vec3.horizontalDistanceSqr();
-        double d3 = this.xPush * this.xPush + this.zPush * this.zPush;
+        double d3 = xPush * xPush + zPush * zPush;
 
         if (d3 > 1.0E-4D && d2 > 0.001D) {
             double d4 = Math.sqrt(d2);
             double d5 = Math.sqrt(d3);
-            this.xPush = vec3.x / d4 * d5;
-            this.zPush = vec3.z / d4 * d5;
+            xPush = vec3.x / d4 * d5;
+            zPush = vec3.z / d4 * d5;
         }
     }
 
@@ -88,36 +80,36 @@ public class LocomotiveEntity extends AbstractCart {
         if (ret.consumesAction()) return ret;
         ItemStack itemstack = player.getItemInHand(interactionHand);
 
-        if (INGREDIENT.test(itemstack) && this.fuel + 3600 <= 32000) {
+        if (INGREDIENT.test(itemstack) && fuel + 3600 <= 32000) {
             if (!player.getAbilities().instabuild) {
                 itemstack.shrink(1);
             }
-            this.fuel += 72; //TODO change
+            fuel += 3600; //TODO change
         }
 
-        if (this.fuel > 0) {
-            this.xPush = this.getX() - player.getX();
-            this.zPush = this.getZ() - player.getZ();
+        if (fuel > 0) {
+            xPush = getX() - player.getX();
+            zPush = getZ() - player.getZ();
         }
 
         if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) {
-            if (this.debugMode) {
-                this.debugMode = false;
-                this.entityData.set(DATA_DEBUG_MODE, false);
+            if (debugMode) {
+                debugMode = false;
+                entityData.set(DATA_DEBUG_MODE, false);
             } else {
-                this.debugMode = true;
-                this.entityData.set(DATA_DEBUG_MODE, true);
+                debugMode = true;
+                entityData.set(DATA_DEBUG_MODE, true);
             }
         } //TODO remove debug
 
-        return InteractionResult.sidedSuccess(this.level.isClientSide);
+        return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
     }
 
     public void addFuelByHopper(int plusFuel) {
-        BlockPos thisBlockPos = new BlockPos(this.position());
+        BlockPos thisBlockPos = new BlockPos(position());
 
-        for (BlockPos blockPos : ccUtil.nearsBlockPos(thisBlockPos)) {
-            BlockState blockState = this.level.getBlockState(blockPos);
+        for (BlockPos blockPos : nearsBlockPos(thisBlockPos)) {
+            BlockState blockState = level.getBlockState(blockPos);
 
             if (blockState.is(Blocks.HOPPER)) {
                 for (int i = 0; i < 5; i++) {
@@ -126,33 +118,32 @@ public class LocomotiveEntity extends AbstractCart {
 
                     HopperBlockEntity hopperBlockEntity = null;
                     Vec3 vecToLocomotive = new Vec3(rangeNewMinecartEntities.get(0).getX() - (blockPos.getX() + 0.5D), rangeNewMinecartEntities.get(0).getY() - blockPos.getY(), rangeNewMinecartEntities.get(0).getZ() - (blockPos.getZ() + 0.5D));
-                    System.out.println(vecToLocomotive);
-                    System.out.println(ccUtil.vecToDirection(vecToLocomotive));
-                    if (ccUtil.vecToDirection(vecToLocomotive) != null) if (ccUtil.anyRail(this.level.getBlockState(blockPos.relative(ccUtil.vecToDirection(vecToLocomotive)))))
+
+                    if (ccUtil.vecToDirection(vecToLocomotive) != null) if (isRail(level.getBlockState(blockPos.relative(ccUtil.vecToDirection(vecToLocomotive)))))
                         hopperBlockEntity = HopperRotation(ccUtil.vecToDirection(vecToLocomotive), blockPos);
 
                     if (hopperBlockEntity != null && hasFuelItem(hopperBlockEntity, i)) {
-                        if (this.fuel <= plusFuel + 100) {
-                            this.fuel += plusFuel;
+                        if (fuel <= plusFuel + 100) {
+                            fuel += plusFuel;
                             hopperBlockEntity.getItem(i).shrink(1);
 
-                            switch (this.getDirection()) {
-                                case NORTH:
-                                    this.xPush = 0.0D;
-                                    this.zPush = -1.0D;
-                                    break;
-                                case EAST:
-                                    this.xPush = 1.0D;
-                                    this.zPush = 0.0D;
-                                    break;
-                                case SOUTH:
-                                    this.xPush = 0.0D;
-                                    this.zPush = 1.0D;
-                                    break;
-                                case WEST:
-                                    this.xPush = -1.0D;
-                                    this.zPush = 0.0D;
-                                    break;
+                            switch (getDirection()) {
+                                case NORTH -> {
+                                    xPush = 0.0D;
+                                    zPush = -1.0D;
+                                }
+                                case EAST -> {
+                                    xPush = 1.0D;
+                                    zPush = 0.0D;
+                                }
+                                case SOUTH -> {
+                                    xPush = 0.0D;
+                                    zPush = 1.0D;
+                                }
+                                case WEST -> {
+                                    xPush = -1.0D;
+                                    zPush = 0.0D;
+                                }
                             }
                             break;
                         }
@@ -162,7 +153,7 @@ public class LocomotiveEntity extends AbstractCart {
         }
     }
     public HopperBlockEntity HopperRotation(Direction direction, BlockPos blockPos) {
-        if (this.level.getBlockState(blockPos).is(Blocks.HOPPER)) {
+        if (level.getBlockState(blockPos).is(Blocks.HOPPER)) {
             HopperBlockEntity hopperBlockEntity = (HopperBlockEntity) level.getBlockEntity(blockPos);
             ArrayList<ItemStack>  itemsInHopper = new ArrayList<>();
 
@@ -185,45 +176,51 @@ public class LocomotiveEntity extends AbstractCart {
     //////////////////////////////////////TECHNICAL METHODS//////////////////////////
 
     public void stopBeforeTurnWhenSlow(Vec3 delta) {
-        if (this.level.getBlockState(this.getOnPos().above().relative(this.getDirection())).is(Blocks.RAIL)) {
-            BlockPos blockPos = this.getOnPos().above().relative(this.getDirection());
-            BlockState blockState = this.level.getBlockState(blockPos);
+        if (level.getBlockState(getOnPos().above().relative(getDirection())).is(Blocks.RAIL)) {
+            BlockPos blockPos = getOnPos().above().relative(getDirection());
+            BlockState blockState = level.getBlockState(blockPos);
 
-            RailShape shape = ccUtil.anyRailShape(blockState, blockPos, this);
-            if (!this.getDeltaMovement().equals(Vec3.ZERO) && delta.length() < 1.0E-1 && ccUtil.railIsRotating(shape)) this.setDeltaMovement(Vec3.ZERO);
+            RailShape shape = anyRailShape(blockState, blockPos);
+            if (!getDeltaMovement().equals(Vec3.ZERO) && delta.length() < 1.0E-1 && railIsRotating(shape)) setDeltaMovement(Vec3.ZERO);
         }
     }
     public void fuelControl() {
-        if (!this.level.isClientSide()) {
-            if (this.fuel > 0) {
-                --this.fuel;
+        if (!level.isClientSide()) {
+            if (fuel > 0) {
+                --fuel;
             } else  {
                 xPush = 0.0D;
                 zPush = 0.0D;
             }
 
-            this.setHasFuel(this.fuel > 0);
+            setHasFuel(fuel > 0);
         }
     }
     public void smokeAnim() {
-        if (this.hasFuel() && this.random.nextInt(4) == 0) {
-            switch (this.getDirection()) {
-                case EAST -> this.level.addParticle(ParticleTypes.LARGE_SMOKE, this.getX() - 0.19D, this.getY() + 1.3D, this.getZ() - 0.19D, 0.0D, 0.0D, 0.0D);
-                case NORTH -> this.level.addParticle(ParticleTypes.LARGE_SMOKE, this.getX() - 0.19D, this.getY() + 1.3D, this.getZ() + 0.19D, 0.0D, 0.0D, 0.0D);
-                case WEST -> this.level.addParticle(ParticleTypes.LARGE_SMOKE, this.getX() + 0.19D, this.getY() + 1.3D, this.getZ() + 0.19D, 0.0D, 0.0D, 0.0D);
-                case SOUTH -> this.level.addParticle(ParticleTypes.LARGE_SMOKE, this.getX() + 0.19D, this.getY() + 1.3D, this.getZ() - 0.19D, 0.0D, 0.0D, 0.0D);
+        if (hasFuel() && random.nextInt(4) == 0) {
+            switch (getDirection()) {
+                case EAST -> level.addParticle(ParticleTypes.LARGE_SMOKE, getX() - 0.19D, getY() + 1.3D, getZ() - 0.19D, 0.0D, 0.0D, 0.0D);
+                case NORTH -> level.addParticle(ParticleTypes.LARGE_SMOKE, getX() - 0.19D, getY() + 1.3D, getZ() + 0.19D, 0.0D, 0.0D, 0.0D);
+                case WEST -> level.addParticle(ParticleTypes.LARGE_SMOKE, getX() + 0.19D, getY() + 1.3D, getZ() + 0.19D, 0.0D, 0.0D, 0.0D);
+                case SOUTH -> level.addParticle(ParticleTypes.LARGE_SMOKE, getX() + 0.19D, getY() + 1.3D, getZ() - 0.19D, 0.0D, 0.0D, 0.0D);
             }
         }
     }
 
     @Override
     public boolean canBeCollidedWith() {
-        return this.entityData.get(DATA_BACKCART_EXISTS) && this.isAlive();
+        return entityData.get(DATA_BACKCART_EXISTS) && isAlive();
     }
 
     @Override
+    public void setDeltaMovement(Vec3 vec) {
+        deltaMovement = vec;
+
+        if (deltaMovement.length() < 1.0E-3) deltaMovement = Vec3.ZERO;
+    }
+    @Override
     protected double getMaxSpeed() {
-        return (this.isInWater() ? 4.0D : 8.0D) / 20.0D;
+        return (isInWater() ? 4.0D : 8.0D) / 20.0D;
     }
     @Override
     public float getMaxCartSpeedOnRail() {
@@ -231,20 +228,20 @@ public class LocomotiveEntity extends AbstractCart {
     } //TODO change
     @Override
     protected void applyNaturalSlowdown() {
-        double d0 = this.xPush * this.xPush + this.zPush * this.zPush;
+        double d0 = xPush * xPush + zPush * zPush;
         if (d0 > 1.0E-7D) {
             d0 = Math.sqrt(d0);
-            this.xPush /= d0;
-            this.zPush /= d0;
-            Vec3 vec3 = this.getDeltaMovement().multiply(0.8D, 0.0D, 0.8D).add(this.xPush, 0.0D, this.zPush);
+            xPush /= d0;
+            zPush /= d0;
+            Vec3 vec3 = getDeltaMovement().multiply(0.8D, 0.0D, 0.8D).add(xPush, 0.0D, zPush);
 
-            if (this.isInWater()) {
+            if (isInWater()) {
                 vec3 = vec3.scale(0.1D);
             }
 
-            this.setDeltaMovement(vec3);
+            setDeltaMovement(vec3);
         } else {
-            this.setDeltaMovement(this.getDeltaMovement().multiply(0.98D, 0.0D, 0.98D));
+            setDeltaMovement(getDeltaMovement().multiply(0.98D, 0.0D, 0.98D));
         }
 
         super.applyNaturalSlowdown();
@@ -254,30 +251,30 @@ public class LocomotiveEntity extends AbstractCart {
     protected void defineSynchedData() {
         super.defineSynchedData();
 
-        this.entityData.define(DATA_ID_FUEL, false);
+        entityData.define(DATA_ID_FUEL, false);
     }
     @Override
     protected void addAdditionalSaveData(CompoundTag compoundTag) {
         super.addAdditionalSaveData(compoundTag);
 
-        compoundTag.putDouble("PushX", this.xPush);
-        compoundTag.putDouble("PushZ", this.zPush);
-        compoundTag.putShort("Fuel", (short)this.fuel);
+        compoundTag.putDouble("PushX", xPush);
+        compoundTag.putDouble("PushZ", zPush);
+        compoundTag.putShort("Fuel", (short)fuel);
     } //TODO remove debug
     @Override
     protected void readAdditionalSaveData(CompoundTag compoundTag) {
         super.readAdditionalSaveData(compoundTag);
 
-        this.xPush = compoundTag.getDouble("PushX");
-        this.zPush = compoundTag.getDouble("PushZ");
-        this.fuel = compoundTag.getShort("Fuel");
+        xPush = compoundTag.getDouble("PushX");
+        zPush = compoundTag.getDouble("PushZ");
+        fuel = compoundTag.getShort("Fuel");
     } //TODO remove debug
 
     public boolean hasFuel() {
-        return this.entityData.get(DATA_ID_FUEL);
+        return entityData.get(DATA_ID_FUEL);
     }
     protected void setHasFuel(boolean bool) {
-        this.entityData.set(DATA_ID_FUEL, bool);
+        entityData.set(DATA_ID_FUEL, bool);
     }
 
     public boolean hasFuelItem(HopperBlockEntity hopperBlockEntity, int counter) {
@@ -299,6 +296,6 @@ public class LocomotiveEntity extends AbstractCart {
 
     @Override
     public BlockState getDefaultDisplayBlockState() {
-        return Blocks.FURNACE.defaultBlockState().setValue(FurnaceBlock.FACING, Direction.NORTH).setValue(FurnaceBlock.LIT, this.hasFuel());
+        return Blocks.FURNACE.defaultBlockState().setValue(FurnaceBlock.FACING, Direction.NORTH).setValue(FurnaceBlock.LIT, hasFuel());
     }
 }
