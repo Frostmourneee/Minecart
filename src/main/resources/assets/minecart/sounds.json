@@ -1,0 +1,13 @@
+{
+  "entity.cart.clamp" : {
+    "sounds": [
+      "minecart:cart_clamp"
+    ]
+  },
+
+  "entity.cart.unclamp" : {
+    "sounds": [
+      "minecart:cart_unclamp"
+    ]
+  }
+}

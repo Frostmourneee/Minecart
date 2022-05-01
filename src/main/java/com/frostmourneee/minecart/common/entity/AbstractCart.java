@@ -1,6 +1,6 @@
 package com.frostmourneee.minecart.common.entity;
 
-import com.frostmourneee.minecart.ccUtil;
+import com.frostmourneee.minecart.core.init.ccSoundInit;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -9,6 +9,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
@@ -31,7 +32,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.frostmourneee.minecart.ccUtil.customPrint;
+import static com.frostmourneee.minecart.ccUtil.*;
 import static com.frostmourneee.minecart.core.init.ccItemInit.LOCOMOTIVE_ITEM;
 import static com.frostmourneee.minecart.core.init.ccItemInit.WAGON_ITEM;
 
@@ -69,7 +70,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
-        if (!zeroDeltaMovement()) customPrint(this, ccUtil.vecToDirection(delta));
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -254,7 +254,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                         }
                     }
                     else {
-                        if (!zeroDeltaMovementBigIndent() && ccUtil.nearZero(entity.deltaMovement, 5.0E-1)) {
+                        if (!zeroDeltaMovementBigIndent() && nearZero(entity.deltaMovement, 5.0E-1)) {
                             if (hasBackCart) {
                                 backCart.resetFront();
                                 backCart.setDeltaMovement(getDeltaMovement());
@@ -298,6 +298,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         frontCart = cart;
         hasFrontCart = true;
         entityData.set(DATA_FRONTCART_EXISTS, true);
+
+        level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_CLAMP.get(),
+                SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
     }
     public void connectBack(AbstractCart cart) {
         backCart = cart;
@@ -313,7 +316,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             double dist = frontCart.position().subtract(position()).length();
 
             if (!isPosCorrected) {
-                if (ccUtil.nearZero(dist - 2.298D, 1.0E-1)) {
+                if (nearZero(dist - 2.298D, 1.0E-1)) {
                     if (goesUp()) {
                         setPos(frontCart.position().add(frontCart.oppDirToVec3().subtract(0.0D, 1.0D, 0.0D).scale(1.149D)));
                     }
@@ -429,7 +432,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public void tryingToClamp() {
         ArrayList<AbstractCart> frontAbstractCart;
-        AABB areaOfSearch = ccUtil.getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
+        AABB areaOfSearch = getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
         frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 3 FRONT BLOCKS
         frontAbstractCart.removeIf(cart -> cart.equals(this));
 
@@ -668,7 +671,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean goesFlat() {
         if (zeroDeltaMovement() && isRail(level.getBlockState(blockPosition()))) {
             return !anyRailShape(level.getBlockState(blockPosition()), blockPosition()).isAscending();
-        } else return ccUtil.nearZero(delta.y, 1.0E-3);
+        } else return nearZero(delta.y, 1.0E-3);
     }
 
     public boolean bothUpOrDownOrForward() {
@@ -686,10 +689,10 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
 
     public boolean zeroDeltaMovement() {
-        return ccUtil.nearZero(delta, 1.0E-4);
+        return nearZero(delta, 1.0E-4);
     }
     public boolean zeroDeltaMovementBigIndent() {
-        return ccUtil.nearZero(delta, 5.0E-2);
+        return nearZero(delta, 5.0E-2);
     }
     public boolean isStopped() {
         return delta == Vec3.ZERO;
@@ -728,6 +731,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         return tmp;
     }
+
     public enum Type {
         WAGON,
         LOCOMOTIVE

@@ -2,8 +2,10 @@ package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
 import com.frostmourneee.minecart.core.init.ccItemInit;
+import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -52,6 +54,8 @@ public class WagonEntity extends AbstractCart {
         if (!level.isClientSide) {
             if (canBeClamped(player, itemStack)) {
                 if (hasFrontCart) {
+                    level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_UNCLAMP.get(),
+                            SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
                     frontCart.resetBack();
                     resetFront();
                 } else {
