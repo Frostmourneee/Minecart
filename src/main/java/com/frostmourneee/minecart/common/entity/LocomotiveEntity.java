@@ -293,6 +293,7 @@ public class LocomotiveEntity extends AbstractCart {
         return AbstractMinecart.Type.FURNACE;
     }
 
+    @Override
     public AbstractCart.Type getCartType() {
         return AbstractCart.Type.LOCOMOTIVE;
     }

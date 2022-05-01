@@ -158,6 +158,7 @@ public class WagonEntity extends AbstractCart {
         return AbstractMinecart.Type.RIDEABLE;
     }
 
+    @Override
     public AbstractCart.Type getCartType() {
         return Type.WAGON;
     }
