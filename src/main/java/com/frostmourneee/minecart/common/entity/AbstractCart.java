@@ -43,13 +43,9 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public static final EntityDataAccessor<Boolean> DATA_BACKCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
-    public static final EntityDataAccessor<Float> DATA_HORIZONTAL_ROTATION_ANGLE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.FLOAT);
-    public static final EntityDataAccessor<Float> DATA_VERTICAL_ROTATION_ANGLE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.FLOAT);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
 
-    public float horAngle = 0.0F; //CLIENTSIDE ONLY //TODO purpose?
-    public float vertAngle = 0.0F; //CLIENTSIDE ONLY
     public Vec3 delta = Vec3.ZERO;
     public ArrayList<Integer> verticalMovementType = new ArrayList<>(); //1 = up; 0 = flat; -1 = down
     public boolean isPosCorrected = true;
@@ -73,7 +69,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
-        System.out.println(this + " " + horAngle + " " + entityData.get(DATA_HORIZONTAL_ROTATION_ANGLE));
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -519,9 +514,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_FRONTCART_EXISTS, false);
         entityData.define(DATA_BACKCART_EXISTS, false);
         entityData.define(DATA_DEBUG_MODE, false);
-
-        entityData.define(DATA_HORIZONTAL_ROTATION_ANGLE, 0.0F);
-        entityData.define(DATA_VERTICAL_ROTATION_ANGLE, 0.0F);
     } //TODO remove debug
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
@@ -530,8 +522,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         compoundTag.putBoolean("HasFrontCart", hasFrontCart);
         compoundTag.putBoolean("HasBackCart", hasBackCart);
         compoundTag.putBoolean("Debug", debugMode);
-        compoundTag.putFloat("HorAngle", entityData.get(DATA_HORIZONTAL_ROTATION_ANGLE));
-        compoundTag.putFloat("VertAngle", entityData.get(DATA_VERTICAL_ROTATION_ANGLE));
 
         saveNearCartData(backCart, compoundTag, "BackCartExists", DATA_BACKCART_EXISTS);
         saveNearCartData(frontCart, compoundTag, "FrontCartExists", DATA_FRONTCART_EXISTS);
@@ -542,10 +532,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         debugMode = compoundTag.getBoolean("Debug");
         entityData.set(DATA_DEBUG_MODE, debugMode);
-        horAngle = compoundTag.getFloat("HorAngle");
-        entityData.set(DATA_HORIZONTAL_ROTATION_ANGLE, horAngle);
-        vertAngle = compoundTag.getFloat("VertAngle");
-        entityData.set(DATA_VERTICAL_ROTATION_ANGLE, vertAngle);
         hasFrontCart = compoundTag.getBoolean("FrontCartExists");
         entityData.set(DATA_FRONTCART_EXISTS, hasFrontCart);
         hasBackCart = compoundTag.getBoolean("BackCartExists");
