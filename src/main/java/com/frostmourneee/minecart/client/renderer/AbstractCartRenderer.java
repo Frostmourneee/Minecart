@@ -60,7 +60,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         if (alpha.size() == 3) alpha.remove(0);
         findHorizontalAngle(cart);
 
-        if (!cart.isStopped()) cart.setYRot(-cart.horAngle - 90.0F);
+        if (!cart.isStopped()) cart.setYRot(-cart.horAngle - 90.0F); //CLIENTSIDE ONLY
         poseStack.mulPose(Vector3f.YP.rotationDegrees(cart.horAngle)); //BASIS FOR COORDINATE SYSTEM
         cart.getEntityData().set(DATA_HORIZONTAL_ROTATION_ANGLE, cart.horAngle);
     }

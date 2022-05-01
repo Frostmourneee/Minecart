@@ -60,7 +60,8 @@ public class LocomotiveEntityModel<T extends LocomotiveEntity> extends EntityMod
 		.texOffs(8, 20).addBox(2.0F, -22.0F, -1.0F, 1.0F, 1.0F, 3.0F, new CubeDeformation(0.0F))
 		.texOffs(8, 0).addBox(0.0F, -22.0F, -1.0F, 1.0F, 1.0F, 3.0F, new CubeDeformation(0.0F))
 		.texOffs(13, 25).addBox(1.0F, -22.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
-		.texOffs(0, 20).addBox(1.0F, -22.0F, 1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F)), PartPose.offset(1.0F, -1.0F, 2.0F));
+		.texOffs(0, 20).addBox(1.0F, -22.0F, 1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+		.texOffs(95, 79).addBox(0.0F, -15.0F, -1.0F, 3.0F, 1.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(1.0F, -1.0F, 2.0F));
 
 		PartDefinition hole = partdefinition.addOrReplaceChild("hole", CubeListBuilder.create().texOffs(0, 76).addBox(-2.0F, -4.0F, 10.0F, 4.0F, 3.0F, 1.0F, new CubeDeformation(0.0F))
 		.texOffs(11, 76).addBox(-2.0F, -3.0F, 11.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F))

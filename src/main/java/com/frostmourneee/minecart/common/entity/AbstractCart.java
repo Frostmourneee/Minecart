@@ -30,7 +30,6 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import static com.frostmourneee.minecart.core.init.ccItemInit.LOCOMOTIVE_ITEM;
@@ -74,6 +73,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
+        System.out.println(this + " " + horAngle + " " + entityData.get(DATA_HORIZONTAL_ROTATION_ANGLE));
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -202,14 +202,9 @@ public abstract class AbstractCart extends AbstractMinecart {
             }
 
             switch (getCartType()) {
-                case WAGON -> {
+                case WAGON, LOCOMOTIVE -> {
                     if (!isVehicle() && !hasBackCart && !hasFrontCart) {
-                        push(d0 / 5, 0.0D, d1 / 5); //TODO change
-                    }
-                }
-                case LOCOMOTIVE -> {
-                    if (!isVehicle() && !hasBackCart && !hasFrontCart) {
-                        push(d0, 0.0D, d1);
+                        push(d0, 0.0D, d1); //TODO change
                     }
                 }
             }
@@ -456,6 +451,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (frontAbstractCart.get(0).getDirection().equals(getDirection())) {
             setDeltaMovement(Vec3.ZERO);
             connectFront(frontAbstractCart.get(0));
+            frontCart.setDeltaMovement(Vec3.ZERO);
             frontCart.connectBack(this);
             setPos(frontCart.position().add(oppDirToVec3().scale(1.625D)));
 
