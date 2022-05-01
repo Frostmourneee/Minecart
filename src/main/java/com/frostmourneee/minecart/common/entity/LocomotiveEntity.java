@@ -44,6 +44,7 @@ public class LocomotiveEntity extends AbstractCart {
     public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
+    public static final int FUEL_ADD_BY_CLICK = 3600; //TODO change
 
     @Override
     public void tick() {
@@ -55,7 +56,7 @@ public class LocomotiveEntity extends AbstractCart {
         stopBeforeTurnWhenSlow(delta);
         fuelControl();
         smokeAnim();
-        addFuelByHopper(72); //TODO change
+        addFuelByHopper(FUEL_ADD_BY_CLICK);
     }
 
     @Override
@@ -84,7 +85,7 @@ public class LocomotiveEntity extends AbstractCart {
             if (!player.getAbilities().instabuild) {
                 itemstack.shrink(1);
             }
-            fuel += 3600; //TODO change
+            fuel += FUEL_ADD_BY_CLICK;
 
             level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.LOCOMOTIVE_START.get(),
                     SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
