@@ -438,7 +438,10 @@ public abstract class AbstractCart extends AbstractMinecart {
         frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 3 FRONT BLOCKS
         frontAbstractCart.removeIf(cart -> cart.equals(this));
 
-        if (!frontAbstractCart.isEmpty()) {
+        if (frontAbstractCart.isEmpty()) {
+            level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_CLAMP_FAIL.get(),
+                    SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
+        } else {
             connection(frontAbstractCart);
         }
     }
@@ -461,6 +464,9 @@ public abstract class AbstractCart extends AbstractMinecart {
                 cart = cart.backCart;
                 cart.setPos(cart.frontCart.position().add(oppDirToVec3().scale(1.625D)));
             }
+        } else {
+            level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_CLAMP_FAIL.get(),
+                    SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
         }
     }
 
