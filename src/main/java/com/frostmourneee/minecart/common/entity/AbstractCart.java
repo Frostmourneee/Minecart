@@ -84,6 +84,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             debugMode = entityData.get(DATA_DEBUG_MODE);
             initTick = false;
         }
+        if (this instanceof LocomotiveEntity) customPrint(this, hadBackCart, hasBackCart, backCart);
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -313,8 +314,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         frontCart = cart;
         hasFrontCart = true;
         entityData.set(DATA_FRONTCART_EXISTS, true);
-
-        cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
     }
     public void connectBack(AbstractCart cart) {
         backCart = cart;
@@ -476,6 +475,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 frontCart.setPos(frontCart.position().add(frontCart.dirToVec3().scale(distDelta)));
             }
             setPos(frontCart.position().add(oppDirToVec3().scale(1.625D)));
+            cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
 
             AbstractCart cart = this; //PULLING BACK CARTS UP TO CORRECT COORDS
             while (cart.backCart != null) {
@@ -604,6 +604,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
                 hasBackCart = true;
                 entityData.set(DATA_BACKCART_EXISTS, true);
+                hadBackCart = false;
             }
         }
 
@@ -616,6 +617,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
                 hasFrontCart = true;
                 entityData.set(DATA_FRONTCART_EXISTS, true);
+                hadFrontCart = false;
             }
         }
     }
