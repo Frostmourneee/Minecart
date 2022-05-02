@@ -448,6 +448,25 @@ public abstract class AbstractCart extends AbstractMinecart {
             return null;
         }
     }
+    public float rotAngle() {
+        if (zeroDelta()) {
+            return -1 * getYRot() + 270.0F;
+        } else {
+            if (nearZero(delta.x, 1.0E-3)) return delta.z > 0 ? 270.0F : 90.0F;
+            if (nearZero(delta.z, 1.0E-3)) return delta.x > 0 ? 0.0F : 180.0F;
+
+            if (delta.x > 1.0E-3 && delta.z > 1.0E-3) return -1 * (float) Math.toDegrees(Math.atan(delta.z / delta.x)) + 360.0F;
+            if (delta.x > 1.0E-3 && delta.z < -1.0E-3) return -1 * (float) Math.toDegrees(Math.atan(delta.z / delta.x));
+            if (delta.x < -1.0E-3 && delta.z > 1.0E-3) return -1 * (float) Math.toDegrees(Math.atan(delta.z / delta.x)) + 180.0F;
+            if (delta.x < -1.0E-3 && delta.z < -1.0E-3) return -1 * (float) Math.toDegrees(Math.atan(delta.z / delta.x)) + 180.0F;
+
+            return 0.0F;
+        }
+    }
+    public float risingAngle() {
+        if (goesFlat()) return 0.0F;
+        return (float) Math.toDegrees(Math.atan(delta.y / delta.horizontalDistance()));
+    }
 
     public void tryingToClamp() {
         ArrayList<AbstractCart> frontAbstractCart;
