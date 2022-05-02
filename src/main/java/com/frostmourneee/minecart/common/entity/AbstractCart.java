@@ -23,7 +23,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.PoweredRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -48,7 +47,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_BACKCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
 
-    public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
+    //public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
 
     public Vec3 delta = Vec3.ZERO;
     public ArrayList<Integer> verticalMovementType = new ArrayList<>(); //1 = up; 0 = flat; -1 = down
@@ -543,7 +542,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         entityData.define(DATA_FRONTCART_EXISTS, false);
         entityData.define(DATA_BACKCART_EXISTS, false);
-        entityData.define(DATA_DEBUG_MODE, false);
+        //entityData.define(DATA_DEBUG_MODE, false);
     } //TODO remove debug
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
@@ -561,7 +560,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         super.readAdditionalSaveData(compoundTag);
 
         debugMode = compoundTag.getBoolean("Debug");
-        entityData.set(DATA_DEBUG_MODE, debugMode);
+        //entityData.set(DATA_DEBUG_MODE, debugMode);
         hadFrontCart = compoundTag.getBoolean("FrontCartExists");
         hadBackCart = compoundTag.getBoolean("BackCartExists");
 

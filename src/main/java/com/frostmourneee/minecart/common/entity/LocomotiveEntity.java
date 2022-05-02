@@ -29,7 +29,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 
-import static com.frostmourneee.minecart.ccUtil.customPrint;
 import static net.minecraft.world.level.block.HopperBlock.FACING;
 
 public class LocomotiveEntity extends AbstractCart {
@@ -99,10 +98,10 @@ public class LocomotiveEntity extends AbstractCart {
         if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) {
             if (debugMode) {
                 debugMode = false;
-                entityData.set(DATA_DEBUG_MODE, false);
+                //entityData.set(DATA_DEBUG_MODE, false);
             } else {
                 debugMode = true;
-                entityData.set(DATA_DEBUG_MODE, true);
+                //entityData.set(DATA_DEBUG_MODE, true);
             }
         } //TODO remove debug
 

@@ -120,7 +120,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
     }
 
     public void debugMode (AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
-        if (cart.getEntityData().get(AbstractCart.DATA_DEBUG_MODE))
+        if (cart.debugMode)
             dmUtil.renderVisibleIndicator(Blocks.REDSTONE_BLOCK.defaultBlockState(), poseStack, buffer, int6);
     }
 

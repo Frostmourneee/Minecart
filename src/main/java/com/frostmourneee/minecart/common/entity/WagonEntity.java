@@ -45,11 +45,11 @@ public class WagonEntity extends AbstractCart {
         if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
             if (debugMode) {
                 debugMode = false;
-                entityData.set(DATA_DEBUG_MODE, false);
+                //entityData.set(DATA_DEBUG_MODE, false);
             }
             else {
                 debugMode = true;
-                entityData.set(DATA_DEBUG_MODE, true);
+                //entityData.set(DATA_DEBUG_MODE, true);
             }
         } //TODO remove debug
 
