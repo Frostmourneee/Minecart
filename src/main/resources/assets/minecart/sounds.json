@@ -27,5 +27,11 @@
     "sounds": [
       "minecart:cart_put"
     ]
+  },
+
+  "entity.cart.death" : {
+    "sounds": [
+      "minecart:cart_death"
+    ]
   }
 }

@@ -251,6 +251,8 @@ public abstract class AbstractCart extends AbstractMinecart {
                                 backCart.setDeltaMovement(getDeltaMovement());
                             }
 
+                            level.playSound(level.getNearestPlayer(this, 0.0D),
+                                    new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
                             remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                 spawnAtLocation(LOCOMOTIVE_ITEM.get());
@@ -264,6 +266,8 @@ public abstract class AbstractCart extends AbstractMinecart {
                                 backCart.setDeltaMovement(getDeltaMovement());
                             }
 
+                            level.playSound(level.getNearestPlayer(this, 0.0D),
+                                    new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
                             remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                 spawnAtLocation(LOCOMOTIVE_ITEM.get());
@@ -485,6 +489,8 @@ public abstract class AbstractCart extends AbstractMinecart {
             resetFront();
         }
 
+        level.playSound(level.getNearestPlayer(this, 0.0D),
+                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
         remove(RemovalReason.KILLED);
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
             switch (getCartType()) {
@@ -497,12 +503,18 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void discard() { //in creative
         if (hasBackCart) backCart.resetFront();
         if (hasFrontCart) frontCart.resetBack();
+
+        level.playSound(level.getNearestPlayer(this, 0.0D),
+                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
         remove(Entity.RemovalReason.DISCARDED);
     }
     @Override
     public void destroy(@NotNull DamageSource damageSource) { //in survival
         if (hasBackCart) backCart.resetFront();
         if (hasFrontCart) frontCart.resetBack();
+
+        level.playSound(level.getNearestPlayer(this, 0.0D),
+                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
         remove(Entity.RemovalReason.KILLED);
 
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
