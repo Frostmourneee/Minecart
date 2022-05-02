@@ -21,6 +21,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
+import static com.frostmourneee.minecart.ccUtil.customPrint;
+
 public class WagonEntity extends AbstractCart {
 
     public WagonEntity(EntityType entityType, Level level) {
@@ -51,16 +53,13 @@ public class WagonEntity extends AbstractCart {
             }
         } //TODO remove debug
 
-        if (!level.isClientSide) {
-            if (canBeClamped(player, itemStack)) {
-                if (hasFrontCart) {
-                    level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_UNCLAMP.get(),
-                            SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
-                    frontCart.resetBack();
-                    resetFront();
-                } else {
-                    tryingToClamp();
-                }
+        if (canBeClamped(itemStack)) {
+            if (hasFrontCart) {
+                cartSound(5.5F, ccSoundInit.CART_UNCLAMP.get());
+                frontCart.resetBack();
+                resetFront();
+            } else {
+                tryingToClamp();
             }
         }
 
@@ -109,7 +108,8 @@ public class WagonEntity extends AbstractCart {
     public void setDeltaMovement(@NotNull Vec3 vec) {
         if (hasFrontCart) {
             if (frontCart.isStopped()) deltaMovement = Vec3.ZERO;
-            else if (frontCart.position().subtract(position()).length() > 1.625D) deltaMovement = frontCart.deltaMovement;
+            else if (frontCart.position().subtract(position()).length() > 1.625D)
+                deltaMovement = frontCart.deltaMovement;
         } else deltaMovement = vec;
 
         if (deltaMovement.length() < 1.0E-3) deltaMovement = Vec3.ZERO;
@@ -130,7 +130,7 @@ public class WagonEntity extends AbstractCart {
         }
     }
 
-    public boolean canBeClamped(Player player, ItemStack itemStack) {
+    public boolean canBeClamped(ItemStack itemStack) {
         BlockPos blockPos = new BlockPos(position());
         BlockState blockState = level.getBlockState(blockPos);
 
@@ -157,7 +157,6 @@ public class WagonEntity extends AbstractCart {
     public AbstractMinecart.@NotNull Type getMinecartType() {
         return AbstractMinecart.Type.RIDEABLE;
     }
-
     @Override
     public AbstractCart.Type getCartType() {
         return Type.WAGON;
