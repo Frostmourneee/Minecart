@@ -55,6 +55,8 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public float horAngle = 0.0F; //USED ONLY IN RENDERER, HERE ALWAYS 0
     public float vertAngle = 0.0F;
+    public ArrayList<Float> alpha = new ArrayList<>();
+
     public BlockPos posOfBackCart = new BlockPos(0, 0, 0);
     public BlockPos posOfFrontCart = new BlockPos(0, 0, 0);
     public boolean hasBackCart = false;

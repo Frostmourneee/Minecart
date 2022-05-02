@@ -18,8 +18,6 @@ import java.util.ArrayList;
 
 public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> {
 
-    public ArrayList<Float> alpha = new ArrayList<>();
-
     public AbstractCartRenderer(EntityRendererProvider.Context context) {
         super(context);
 
@@ -37,14 +35,14 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         hurtAnim(cart, poseStack, float2);
     }
 
-    public void vertRotation(PoseStack poseStack, float vertAngle) {
-        if (alpha.get(alpha.size() - 1) == -90.0F) {
+    public void vertRotation(AbstractCart cart, PoseStack poseStack, float vertAngle) {
+        if (cart.alpha.get(cart.alpha.size() - 1) == -90.0F) {
             if (vertAngle < -2.0F) poseStack.translate(0.0D, 0.15D, 0.23D);
             else if (vertAngle > 2.0F) poseStack.translate(0.0D,0.15D, -0.23D);
 
             poseStack.mulPose(Vector3f.XP.rotationDegrees(vertAngle));
         }
-        else if (alpha.get(alpha.size() - 1) == 180.0F) {
+        else if (cart.alpha.get(cart.alpha.size() - 1) == 180.0F) {
             if (vertAngle < -2.0F) poseStack.translate(0.23D, 0.15D, 0.0D);
             else if (vertAngle > 2.0F) poseStack.translate(-0.23D, 0.15D, 0.0D);
 
@@ -52,7 +50,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         }
     }
     public void horRotation(AbstractCart cart, PoseStack poseStack) {
-        if (alpha.size() == 3) alpha.remove(0);
+        if (cart.alpha.size() == 3) cart.alpha.remove(0);
         findHorizontalAngle(cart);
 
         if (!cart.zeroDeltaHorizontal()) cart.setYRot(-cart.horAngle - 90.0F); //CLIENTSIDE ONLY
@@ -68,16 +66,16 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
             }
         }
         else { //MOVING
-            if (alpha.get(alpha.size() - 1) == -90.0F) { //NORTH-SOUTH MOVEMENT
+            if (cart.alpha.get(cart.alpha.size() - 1) == -90.0F) { //NORTH-SOUTH MOVEMENT
                 if (cart.delta.z < -1.0E-4) cart.horAngle = 90.0F;
                 if (cart.delta.z > 1.0E-4) cart.horAngle = 270.0F;
             }
-            else if (alpha.get(alpha.size() - 1) == 180.0F) { //WEST-EAST Movement
+            else if (cart.alpha.get(cart.alpha.size() - 1) == 180.0F) { //WEST-EAST Movement
                 if (cart.delta.x < -1.0E-4) cart.horAngle = 180.F;
                 if (cart.delta.x > 1.0E-4) cart.horAngle = 0.0F;
             }
-            else if (alpha.size() == 2) { //Rotating movement
-                float deltaAlpha = alpha.get(1) - alpha.get(0);
+            else if (cart.alpha.size() == 2) { //Rotating movement
+                float deltaAlpha = cart.alpha.get(1) - cart.alpha.get(0);
                 if (Math.abs(deltaAlpha) < 30.0F) cart.horAngle -= deltaAlpha;
             }
         }
@@ -113,12 +111,12 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
             Vec3 vec33 = vec32.add(-vec31.x, -vec31.y, -vec31.z);
             if (vec33.length() != 0.0D) {
                 vec33 = vec33.normalize();
-                alpha.add((float)(Math.atan2(vec33.z, vec33.x) * 180.0D / Math.PI));
+                cart.alpha.add((float)(Math.atan2(vec33.z, vec33.x) * 180.0D / Math.PI));
                 cart.vertAngle = (float)(Math.atan(vec33.y) * 73.0D);
             }
         }
 
-        vertRotation(poseStack, cart.vertAngle);
+        vertRotation(cart, poseStack, cart.vertAngle);
     }
 
     public void debugMode (AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
