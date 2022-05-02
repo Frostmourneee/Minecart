@@ -20,6 +20,12 @@ public final class ccSoundInit {
     public static final RegistryObject<SoundEvent> CART_CLAMP_FAIL = SOUNDS.register("entity.cart.clamp_fail",
             () -> new SoundEvent(new ResourceLocation(minecart.MOD_ID, "entity.cart.clamp_fail")));
 
+    public static final RegistryObject<SoundEvent> CART_PUT = SOUNDS.register("entity.cart.put",
+            () -> new SoundEvent(new ResourceLocation(minecart.MOD_ID, "entity.cart.put")));
+
+    public static final RegistryObject<SoundEvent> CART_DEATH = SOUNDS.register("entity.cart.death",
+            () -> new SoundEvent(new ResourceLocation(minecart.MOD_ID, "entity.cart.death")));
+
     public static final RegistryObject<SoundEvent> LOCOMOTIVE_START = SOUNDS.register("entity.locomotive.start",
             () -> new SoundEvent(new ResourceLocation(minecart.MOD_ID, "entity.locomotive.start")));
 

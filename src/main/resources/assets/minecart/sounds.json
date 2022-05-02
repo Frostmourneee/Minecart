@@ -21,5 +21,17 @@
     "sounds": [
       "minecart:locomotive_start"
     ]
+  },
+
+  "entity.cart.put" : {
+    "sounds": [
+      "minecart:cart_put"
+    ]
+  },
+
+  "entity.cart.death" : {
+    "sounds": [
+      "minecart:cart_death"
+    ]
   }
 }
