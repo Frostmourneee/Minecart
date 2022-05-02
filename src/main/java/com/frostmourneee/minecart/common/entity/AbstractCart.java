@@ -76,21 +76,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         vanillaTick();
 
         //My code starts
-        delta = position().subtract(xOld, yOld, zOld);
-        verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
-        if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
-        if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
-        if (initTick) {
-            if (entityData.get(DATA_FRONTCART_EXISTS)) {
-                hadFrontCart = true;
-            }
-            if (entityData.get(DATA_BACKCART_EXISTS)) {
-                hadBackCart = true;
-            }
-
-            debugMode = entityData.get(DATA_DEBUG_MODE); //TODO debug
-            initTick = false;
-        }
+        initialization();
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -157,6 +143,23 @@ public abstract class AbstractCart extends AbstractMinecart {
             }
 
             firstTick = false;
+        }
+    }
+    public void initialization() {
+        delta = position().subtract(xOld, yOld, zOld);
+        verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
+        if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
+        if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
+        if (initTick) {
+            if (entityData.get(DATA_FRONTCART_EXISTS)) {
+                hadFrontCart = true;
+            }
+            if (entityData.get(DATA_BACKCART_EXISTS)) {
+                hadBackCart = true;
+            }
+
+            debugMode = entityData.get(DATA_DEBUG_MODE); //TODO debug
+            initTick = false;
         }
     }
 
