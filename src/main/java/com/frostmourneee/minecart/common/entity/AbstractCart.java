@@ -47,7 +47,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_BACKCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
 
-    //public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
+    public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
 
     public Vec3 delta = Vec3.ZERO;
     public ArrayList<Integer> verticalMovementType = new ArrayList<>(); //1 = up; 0 = flat; -1 = down
@@ -63,6 +63,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean hasFrontCart = false;
     public boolean hadBackCart = false;
     public boolean hadFrontCart = false;
+    public boolean initTick = true;
 
     public boolean debugMode = false; //TODO remove debug
     public int debugCounter = 0;
@@ -79,6 +80,10 @@ public abstract class AbstractCart extends AbstractMinecart {
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
+        if (initTick) {
+            debugMode = entityData.get(DATA_DEBUG_MODE);
+            initTick = false;
+        }
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -542,25 +547,26 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         entityData.define(DATA_FRONTCART_EXISTS, false);
         entityData.define(DATA_BACKCART_EXISTS, false);
-        //entityData.define(DATA_DEBUG_MODE, false);
+        entityData.define(DATA_DEBUG_MODE, false);
     } //TODO remove debug
     @Override
-    protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
+    protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) { //SERVER ONLY
         super.addAdditionalSaveData(compoundTag);
 
         compoundTag.putBoolean("HasFrontCart", hasFrontCart);
         compoundTag.putBoolean("HasBackCart", hasBackCart);
+
         compoundTag.putBoolean("Debug", debugMode);
 
         saveNearCartData(backCart, compoundTag, "BackCartExists", DATA_BACKCART_EXISTS);
         saveNearCartData(frontCart, compoundTag, "FrontCartExists", DATA_FRONTCART_EXISTS);
     } //TODO remove debug
     @Override
-    protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
+    protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) { //SERVER ONLY
         super.readAdditionalSaveData(compoundTag);
 
-        debugMode = compoundTag.getBoolean("Debug");
-        //entityData.set(DATA_DEBUG_MODE, debugMode);
+        entityData.set(DATA_DEBUG_MODE, compoundTag.getBoolean("Debug"));
+
         hadFrontCart = compoundTag.getBoolean("FrontCartExists");
         hadBackCart = compoundTag.getBoolean("BackCartExists");
 
@@ -576,7 +582,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             posOfFrontCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
         }
     } //TODO remove debug
-    public void saveNearCartData(AbstractCart cart, CompoundTag compoundTag, String name, EntityDataAccessor<Boolean> accessor) {
+    public void saveNearCartData(AbstractCart cart, CompoundTag compoundTag, String name, EntityDataAccessor<Boolean> accessor) { //SERVER ONLY
         if (entityData.get(accessor) && cart != null) {
             compoundTag.putBoolean(name, true);
             int[] cartPos = new int[3];

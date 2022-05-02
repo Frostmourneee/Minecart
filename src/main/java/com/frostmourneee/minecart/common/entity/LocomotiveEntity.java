@@ -96,13 +96,7 @@ public class LocomotiveEntity extends AbstractCart {
         }
 
         if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) {
-            if (debugMode) {
-                debugMode = false;
-                //entityData.set(DATA_DEBUG_MODE, false);
-            } else {
-                debugMode = true;
-                //entityData.set(DATA_DEBUG_MODE, true);
-            }
+            debugMode = !debugMode;
         } //TODO remove debug
 
         return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);

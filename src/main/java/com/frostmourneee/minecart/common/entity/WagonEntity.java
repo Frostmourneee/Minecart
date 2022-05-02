@@ -43,14 +43,7 @@ public class WagonEntity extends AbstractCart {
         ItemStack itemStack = player.getItemInHand(interactionHand);
 
         if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
-            if (debugMode) {
-                debugMode = false;
-                //entityData.set(DATA_DEBUG_MODE, false);
-            }
-            else {
-                debugMode = true;
-                //entityData.set(DATA_DEBUG_MODE, true);
-            }
+            debugMode = !debugMode;
         } //TODO remove debug
 
         if (canBeClamped(itemStack)) {
