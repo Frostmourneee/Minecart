@@ -29,6 +29,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 
+import static com.frostmourneee.minecart.ccUtil.customPrint;
 import static net.minecraft.world.level.block.HopperBlock.FACING;
 
 public class LocomotiveEntity extends AbstractCart {
@@ -87,8 +88,7 @@ public class LocomotiveEntity extends AbstractCart {
             }
             fuel += FUEL_ADD_BY_CLICK;
 
-            level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.LOCOMOTIVE_START.get(),
-                    SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
+            cartSound(15.0F, ccSoundInit.LOCOMOTIVE_START.get());
         }
 
         if (fuel > 0) {

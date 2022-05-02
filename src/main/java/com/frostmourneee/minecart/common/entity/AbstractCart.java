@@ -10,6 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
@@ -150,7 +151,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public void collisionProcessing() {
         AABB box;
-
         if (getCollisionHandler() != null) box = getCollisionHandler().getMinecartCollisionBox(this);
         else box = getBoundingBox().inflate(0.2D, 0.0D, 0.2D);
 
@@ -256,8 +256,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                                 backCart.setDeltaMovement(getDeltaMovement());
                             }
 
-                            level.playSound(level.getNearestPlayer(this, 0.0D),
-                                    new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+                            cartSound(10.0F, ccSoundInit.CART_DEATH.get());
                             remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                 spawnAtLocation(LOCOMOTIVE_ITEM.get());
@@ -271,8 +270,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                                 backCart.setDeltaMovement(getDeltaMovement());
                             }
 
-                            level.playSound(level.getNearestPlayer(this, 0.0D),
-                                    new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+                            cartSound(10.0F, ccSoundInit.CART_DEATH.get());
                             remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                 spawnAtLocation(LOCOMOTIVE_ITEM.get());
@@ -312,8 +310,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         hasFrontCart = true;
         entityData.set(DATA_FRONTCART_EXISTS, true);
 
-        level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_CLAMP.get(),
-                SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
+        cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
     }
     public void connectBack(AbstractCart cart) {
         backCart = cart;
@@ -452,8 +449,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         frontAbstractCart.removeIf(cart -> cart.equals(this));
 
         if (frontAbstractCart.isEmpty()) {
-            level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_CLAMP_FAIL.get(),
-                    SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
+            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
         } else {
             connection(frontAbstractCart);
         }
@@ -483,8 +479,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 cart.setPos(cart.frontCart.position().add(oppDirToVec3().scale(1.625D)));
             }
         } else {
-            level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_CLAMP_FAIL.get(),
-                    SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
+            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
         }
     }
 
@@ -501,8 +496,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             resetFront();
         }
 
-        level.playSound(level.getNearestPlayer(this, 0.0D),
-                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+        cartSound(10.0F, ccSoundInit.CART_DEATH.get());
         remove(RemovalReason.KILLED);
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
             switch (getCartType()) {
@@ -516,8 +510,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (hasBackCart) backCart.resetFront();
         if (hasFrontCart) frontCart.resetBack();
 
-        level.playSound(level.getNearestPlayer(this, 0.0D),
-                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+        cartSound(10.0F, ccSoundInit.CART_DEATH.get());
         remove(Entity.RemovalReason.DISCARDED);
     }
     @Override
@@ -525,8 +518,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (hasBackCart) backCart.resetFront();
         if (hasFrontCart) frontCart.resetBack();
 
-        level.playSound(level.getNearestPlayer(this, 0.0D),
-                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+        cartSound(10.0F, ccSoundInit.CART_DEATH.get());
         remove(Entity.RemovalReason.KILLED);
 
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
@@ -760,6 +752,13 @@ public abstract class AbstractCart extends AbstractMinecart {
         tmp.add(blockPos.relative(Direction.DOWN));
 
         return tmp;
+    }
+
+    public void cartSound(float distance, SoundEvent soundEvent) {
+        Player player = level.getNearestPlayer(this, distance);
+
+        if (player != null) level.playSound(player, new BlockPos(position()),
+                soundEvent, SoundSource.BLOCKS, 1.0F - distanceTo(player) / distance + 0.1F, 1.0F);
     }
 
     public enum Type {

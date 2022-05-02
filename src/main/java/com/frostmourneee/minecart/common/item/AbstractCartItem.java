@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.DispenserBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.phys.Vec3;
 
 import static com.frostmourneee.minecart.common.entity.AbstractCart.railIsRotating;
 
@@ -69,10 +70,11 @@ public abstract class AbstractCartItem extends Item {
             BaseRailBlock rail = (BaseRailBlock) blockstate.getBlock();
 
             if (!railIsRotating(rail.getRailDirection(blockstate, level, blockpos, null))) {
-                level.playSound(player, blockpos, ccSoundInit.CART_PUT.get(),
-                        SoundSource.BLOCKS, 1.0F, 1.0F);
+                level.playSound(player, blockpos, ccSoundInit.CART_PUT.get(), SoundSource.BLOCKS,
+                        1.0F - (float)player.position().subtract
+                                (new Vec3(blockpos.getX() + 0.5D, blockpos.getY(), blockpos.getZ() + 0.5D)).length() / 5.5F + 0.1F, 1.0F);
 
-                if (!level.isClientSide) {
+                if (!level.isClientSide) { //LEVELSIDE IS AS IT IS IN VANILLA CODE
                     AbstractCart cart = null;
                     switch (getItemType()) {
                         case WAGON -> cart = new WagonEntity(ccEntityInit.WAGON_ENTITY.get(), level);
