@@ -57,8 +57,6 @@ public abstract class AbstractCart extends AbstractMinecart {
     public float vertAngle = 0.0F;
     public ArrayList<Float> alpha = new ArrayList<>();
 
-    public BlockPos posOfBackCart = new BlockPos(0, 0, 0);
-    public BlockPos posOfFrontCart = new BlockPos(0, 0, 0);
     public boolean hasBackCart = false;
     public boolean hasFrontCart = false;
     public boolean hadBackCart = false;
@@ -81,10 +79,16 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
         if (initTick) {
+            if (entityData.get(DATA_FRONTCART_EXISTS)) {
+                hadFrontCart = true;
+            }
+            if (entityData.get(DATA_BACKCART_EXISTS)) {
+                hadBackCart = true;
+            }
+
             debugMode = entityData.get(DATA_DEBUG_MODE);
             initTick = false;
         }
-        if (this instanceof LocomotiveEntity) customPrint(this, hadBackCart, hasBackCart, backCart);
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -557,9 +561,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         compoundTag.putBoolean("HasBackCart", hasBackCart);
 
         compoundTag.putBoolean("Debug", debugMode);
-
-        saveNearCartData(backCart, compoundTag, "BackCartExists", DATA_BACKCART_EXISTS);
-        saveNearCartData(frontCart, compoundTag, "FrontCartExists", DATA_FRONTCART_EXISTS);
     } //TODO remove debug
     @Override
     protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) { //SERVER ONLY
@@ -567,56 +568,53 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         entityData.set(DATA_DEBUG_MODE, compoundTag.getBoolean("Debug"));
 
-        hadFrontCart = compoundTag.getBoolean("FrontCartExists");
-        hadBackCart = compoundTag.getBoolean("BackCartExists");
-
-        if (compoundTag.getBoolean("BackCartExists")) {
-            int[] cartPos;
-            cartPos = compoundTag.getIntArray("BackCartExistsPos");
-            posOfBackCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
-        }
-
-        if (compoundTag.getBoolean("FrontCartExists")) {
-            int[] cartPos;
-            cartPos = compoundTag.getIntArray("FrontCartExistsPos");
-            posOfFrontCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
-        }
+        entityData.set(DATA_BACKCART_EXISTS, compoundTag.getBoolean("HasBackCart"));
+        entityData.set(DATA_FRONTCART_EXISTS, compoundTag.getBoolean("HasFrontCart"));
     } //TODO remove debug
-    public void saveNearCartData(AbstractCart cart, CompoundTag compoundTag, String name, EntityDataAccessor<Boolean> accessor) { //SERVER ONLY
-        if (entityData.get(accessor) && cart != null) {
-            compoundTag.putBoolean(name, true);
-            int[] cartPos = new int[3];
-            cartPos[0] = cart.getBlockX();
-            cartPos[1] = cart.getBlockY();
-            cartPos[2] = cart.getBlockZ();
-            compoundTag.putIntArray(name + "Pos", cartPos);
-        } else {
-            compoundTag.putBoolean(name, false);
-        }
-    }
+
     public void restoreRelativeCarts() {
+        if (backCart != null) hadBackCart = false;
+        if (frontCart != null) hadFrontCart = false;
         if (backCart == null && hadBackCart) {
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfBackCart));
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
+                    getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection().getOpposite()).relative(getDirection().getClockWise()),
+                    new BlockPos(position()).relative(getDirection().getOpposite(), 2).relative(getDirection().getCounterClockWise()))
+            );
+
+            rangeCart.removeIf(cart -> cart == this);
             if (!rangeCart.isEmpty()) {
+                for (int i = 1; i < rangeCart.size(); i++) { //SEARCHING FOR THE NEAREST
+                    if (rangeCart.get(i).distanceTo(this) < rangeCart.get(0).distanceTo(this)) {
+                        rangeCart.set(0, rangeCart.get(i));
+                    }
+                }
                 AbstractCart backCart = rangeCart.get(0);
                 backCart.connectFront(this);
                 connectBack(backCart);
 
                 hasBackCart = true;
-                entityData.set(DATA_BACKCART_EXISTS, true);
                 hadBackCart = false;
             }
         }
 
         if (frontCart == null && hadFrontCart) {
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfFrontCart));
+            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
+                    getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()).relative(getDirection().getClockWise()),
+                    new BlockPos(position()).relative(getDirection(), 2).relative(getDirection().getCounterClockWise()))
+            );
+
+            rangeCart.removeIf(cart -> cart == this);
             if (!rangeCart.isEmpty()) {
+                for (int i = 1; i < rangeCart.size(); i++) { //SEARCHING FOR THE NEAREST
+                    if (rangeCart.get(i).distanceTo(this) < rangeCart.get(0).distanceTo(this)) {
+                        rangeCart.set(0, rangeCart.get(i));
+                    }
+                }
                 AbstractCart frontCart = rangeCart.get(0);
                 frontCart.connectBack(this);
                 connectFront(frontCart);
 
                 hasFrontCart = true;
-                entityData.set(DATA_FRONTCART_EXISTS, true);
                 hadFrontCart = false;
             }
         }

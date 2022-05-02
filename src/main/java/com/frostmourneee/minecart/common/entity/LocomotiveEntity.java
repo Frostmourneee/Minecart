@@ -44,7 +44,7 @@ public class LocomotiveEntity extends AbstractCart {
     public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
-    public static final int FUEL_ADD_BY_CLICK = 3600; //TODO change
+    public static final int FUEL_ADD_BY_CLICK = 18; //TODO change
 
     @Override
     public void tick() {
