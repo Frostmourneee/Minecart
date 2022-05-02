@@ -37,21 +37,13 @@ public class WagonEntity extends AbstractCart {
 
     }
 
-    public @NotNull InteractionResult interact(@NotNull Player player, @NotNull InteractionHand interactionHand) {
-        InteractionResult ret = super.interact(player, interactionHand);
+    @Override
+    public @NotNull InteractionResult interact(@NotNull Player player, @NotNull InteractionHand hand) {
+        InteractionResult ret = super.interact(player, hand);
         if (ret.consumesAction()) return ret;
-        ItemStack itemStack = player.getItemInHand(interactionHand);
+        ItemStack itemStack = player.getItemInHand(hand);
 
-        if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
-            if (debugMode) {
-                debugMode = false;
-                entityData.set(DATA_DEBUG_MODE, false);
-            }
-            else {
-                debugMode = true;
-                entityData.set(DATA_DEBUG_MODE, true);
-            }
-        } //TODO remove debug
+        if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) debugMode = !debugMode; //TODO remove debug
 
         if (canBeClamped(itemStack)) {
             if (hasFrontCart) {
@@ -117,7 +109,7 @@ public class WagonEntity extends AbstractCart {
 
     @Override
     public boolean canBeCollidedWith() {
-        return (entityData.get(DATA_BACKCART_EXISTS) || entityData.get(DATA_FRONTCART_EXISTS)) && isAlive();
+        return (hasBackCart || hasFrontCart) && isAlive();
     }
 
     public void spawnAfterCartLeaving() {

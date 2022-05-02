@@ -11,9 +11,6 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 
-import static com.frostmourneee.minecart.common.entity.AbstractCart.DATA_DEBUG_MODE;
-import static com.frostmourneee.minecart.common.entity.AbstractCart.DATA_FRONTCART_EXISTS;
-
 public class WagonEntityRenderer extends AbstractCartRenderer {
 
     public static ResourceLocation TEXTURE_RED = new ResourceLocation(minecart.MOD_ID, "textures/entities/wagon_red.png");
@@ -41,7 +38,7 @@ public class WagonEntityRenderer extends AbstractCartRenderer {
     //============================================TECHNICAL METHODS====================================================
 
     public void buffering(AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
-        if (cart.getEntityData().get(DATA_DEBUG_MODE)) {
+        if (cart.debugMode) {
             VertexConsumer vertexconsumer = buffer.getBuffer(debugModel.renderType(getTextureLocation(cart)));
             debugModel.renderToBuffer(poseStack, vertexconsumer, int6, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
         } else {
@@ -53,8 +50,8 @@ public class WagonEntityRenderer extends AbstractCartRenderer {
 
     @Override
     public ResourceLocation getTextureLocation(AbstractCart cart) {
-        if (cart.getEntityData().get(DATA_DEBUG_MODE)) {
-            return cart.getEntityData().get(DATA_FRONTCART_EXISTS) ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
-        } else return cart.getEntityData().get(DATA_FRONTCART_EXISTS) ? TEXTURE_GREEN : TEXTURE_RED;
+        if (cart.debugMode) {
+            return cart.hasFrontCart ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
+        } else return cart.hasFrontCart ? TEXTURE_GREEN : TEXTURE_RED;
     }
 }

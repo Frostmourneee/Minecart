@@ -18,9 +18,6 @@ import net.minecraft.world.level.block.FurnaceBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 
-import static com.frostmourneee.minecart.common.entity.AbstractCart.DATA_DEBUG_MODE;
-
-
 public class LocomotiveEntityRenderer extends AbstractCartRenderer {
 
     public static ResourceLocation TEXTURE = new ResourceLocation(minecart.MOD_ID, "textures/entities/locomotive.png");
@@ -47,7 +44,7 @@ public class LocomotiveEntityRenderer extends AbstractCartRenderer {
     //======================================TECHNICAL METHODS==========================================================
 
     public void buffering(AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
-        if (cart.getEntityData().get(DATA_DEBUG_MODE)) {
+        if (cart.debugMode) {
             VertexConsumer vertexconsumer = buffer.getBuffer(debugModel.renderType(getTextureLocation(cart)));
             debugModel.renderToBuffer(poseStack, vertexconsumer, int6, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
         } else {
@@ -58,14 +55,14 @@ public class LocomotiveEntityRenderer extends AbstractCartRenderer {
     }
 
     @Override
-    public ResourceLocation getTextureLocation(AbstractCart locomotiveEntity) {
-        return locomotiveEntity.getEntityData().get(DATA_DEBUG_MODE) ? TEXTURE_DEBUG : TEXTURE;
+    public ResourceLocation getTextureLocation(AbstractCart cart) {
+        return cart.debugMode ? TEXTURE_DEBUG : TEXTURE;
     }
 
     public void furnace(AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
         int j = cart.getDisplayOffset();
         BlockState blockstate = cart.getDisplayBlockState();
-        if (blockstate.getRenderShape() != RenderShape.INVISIBLE && !cart.getEntityData().get(DATA_DEBUG_MODE)) {
+        if (blockstate.getRenderShape() != RenderShape.INVISIBLE && !cart.debugMode) {
             poseStack.pushPose();
             poseStack.scale(0.75F, 0.75F, 0.75F);
             poseStack.translate(-0.5D, (double)((float)(j - 8) / 16.0F) + 1.0D / 8.0D, -0.5D);

@@ -2,7 +2,6 @@ package com.frostmourneee.minecart.client.renderer;
 
 import com.frostmourneee.debugging_minecart.core.dmUtil;
 import com.frostmourneee.minecart.common.entity.AbstractCart;
-import com.frostmourneee.minecart.common.entity.WagonEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Vector3f;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -13,8 +12,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.ArrayList;
 
 public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> {
 
@@ -120,7 +117,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
     }
 
     public void debugMode (AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
-        if (cart.getEntityData().get(AbstractCart.DATA_DEBUG_MODE))
+        if (cart.debugMode)
             dmUtil.renderVisibleIndicator(Blocks.REDSTONE_BLOCK.defaultBlockState(), poseStack, buffer, int6);
     }
 
