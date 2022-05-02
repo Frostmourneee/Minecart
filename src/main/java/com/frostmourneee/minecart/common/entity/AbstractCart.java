@@ -14,6 +14,8 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.animal.IronGolem;
@@ -86,7 +88,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 hadBackCart = true;
             }
 
-            debugMode = entityData.get(DATA_DEBUG_MODE);
+            debugMode = entityData.get(DATA_DEBUG_MODE); //TODO debug
             initTick = false;
         }
 
@@ -186,7 +188,6 @@ public abstract class AbstractCart extends AbstractMinecart {
             }
         }
     }
-
     public void entityPushingBySelf(Entity entity) {
         double d0 = getX() - entity.getX();
         double d1 = getZ() - entity.getZ();
@@ -301,12 +302,10 @@ public abstract class AbstractCart extends AbstractMinecart {
     public abstract AbstractCart.Type getCartType();
 
     public void resetFront() {
-        entityData.set(DATA_FRONTCART_EXISTS, false);
         hasFrontCart = false;
         frontCart = null;
     }
     public void resetBack() {
-        entityData.set(DATA_BACKCART_EXISTS, false);
         hasBackCart = false;
         backCart = null;
     }
@@ -317,12 +316,10 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void connectFront(AbstractCart cart) {
         frontCart = cart;
         hasFrontCart = true;
-        entityData.set(DATA_FRONTCART_EXISTS, true);
     }
     public void connectBack(AbstractCart cart) {
         backCart = cart;
         hasBackCart = true;
-        entityData.set(DATA_BACKCART_EXISTS, true);
     }
 
     public void posCorrectionToFrontCart() {

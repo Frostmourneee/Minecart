@@ -11,8 +11,6 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 
-import static com.frostmourneee.minecart.common.entity.AbstractCart.DATA_FRONTCART_EXISTS;
-
 public class WagonEntityRenderer extends AbstractCartRenderer {
 
     public static ResourceLocation TEXTURE_RED = new ResourceLocation(minecart.MOD_ID, "textures/entities/wagon_red.png");
@@ -53,7 +51,7 @@ public class WagonEntityRenderer extends AbstractCartRenderer {
     @Override
     public ResourceLocation getTextureLocation(AbstractCart cart) {
         if (cart.debugMode) {
-            return cart.getEntityData().get(DATA_FRONTCART_EXISTS) ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
-        } else return cart.getEntityData().get(DATA_FRONTCART_EXISTS) ? TEXTURE_GREEN : TEXTURE_RED;
+            return cart.hasFrontCart ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
+        } else return cart.hasFrontCart ? TEXTURE_GREEN : TEXTURE_RED;
     }
 }

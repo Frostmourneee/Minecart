@@ -11,7 +11,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
@@ -95,9 +94,7 @@ public class LocomotiveEntity extends AbstractCart {
             zPush = getZ() - player.getZ();
         }
 
-        if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) {
-            debugMode = !debugMode;
-        } //TODO remove debug
+        if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) debugMode = !debugMode; //TODO remove debug
 
         return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
     }
@@ -206,7 +203,7 @@ public class LocomotiveEntity extends AbstractCart {
 
     @Override
     public boolean canBeCollidedWith() {
-        return entityData.get(DATA_BACKCART_EXISTS) && isAlive();
+        return hasBackCart && isAlive();
     }
 
     @Override
