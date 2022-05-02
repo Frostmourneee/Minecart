@@ -2,6 +2,7 @@ package com.frostmourneee.minecart.client.renderer;
 
 import com.frostmourneee.debugging_minecart.core.dmUtil;
 import com.frostmourneee.minecart.common.entity.AbstractCart;
+import com.frostmourneee.minecart.common.entity.WagonEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Vector3f;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -54,7 +55,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         if (alpha.size() == 3) alpha.remove(0);
         findHorizontalAngle(cart);
 
-        if (!cart.isStopped()) cart.setYRot(-cart.horAngle - 90.0F); //CLIENTSIDE ONLY
+        if (!cart.zeroDeltaHorizontal()) cart.setYRot(-cart.horAngle - 90.0F); //CLIENTSIDE ONLY
         poseStack.mulPose(Vector3f.YP.rotationDegrees(cart.horAngle)); //BASIS FOR COORDINATE SYSTEM
     }
     public void findHorizontalAngle(AbstractCart cart) {

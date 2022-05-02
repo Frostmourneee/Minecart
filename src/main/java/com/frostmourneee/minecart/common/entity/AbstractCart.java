@@ -55,9 +55,11 @@ public abstract class AbstractCart extends AbstractMinecart {
     public float horAngle = 0.0F; //USED ONLY IN RENDERER, HERE ALWAYS 0
     public float vertAngle = 0.0F;
     public BlockPos posOfBackCart = new BlockPos(0, 0, 0);
-    public boolean hasBackCart = false;
     public BlockPos posOfFrontCart = new BlockPos(0, 0, 0);
+    public boolean hasBackCart = false;
     public boolean hasFrontCart = false;
+    public boolean hadBackCart = false;
+    public boolean hadFrontCart = false;
 
     public boolean debugMode = false; //TODO remove debug
     public int debugCounter = 0;
@@ -251,6 +253,8 @@ public abstract class AbstractCart extends AbstractMinecart {
                                 backCart.setDeltaMovement(getDeltaMovement());
                             }
 
+                            level.playSound(level.getNearestPlayer(this, 0.0D),
+                                    new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
                             remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                 spawnAtLocation(LOCOMOTIVE_ITEM.get());
@@ -264,6 +268,8 @@ public abstract class AbstractCart extends AbstractMinecart {
                                 backCart.setDeltaMovement(getDeltaMovement());
                             }
 
+                            level.playSound(level.getNearestPlayer(this, 0.0D),
+                                    new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
                             remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                 spawnAtLocation(LOCOMOTIVE_ITEM.get());
@@ -337,10 +343,12 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         }
     }
+
+    public Vec3 dirToVec3() {
+        return new Vec3(getDirection().getNormal().getX(), getDirection().getNormal().getY(), getDirection().getNormal().getZ());
+    }
     public Vec3 oppDirToVec3() {
-        return new Vec3(getDirection().getOpposite().getNormal().getX(),
-                getDirection().getOpposite().getNormal().getY(),
-                getDirection().getOpposite().getNormal().getZ());
+        return dirToVec3().reverse();
     }
     @Override
     public Vec3 getPos(double x, double y, double z) { //Used in Renderer class
@@ -459,6 +467,11 @@ public abstract class AbstractCart extends AbstractMinecart {
             connectFront(frontAbstractCart.get(0));
             frontCart.setDeltaMovement(Vec3.ZERO);
             frontCart.connectBack(this);
+
+            if (distanceTo(frontCart) < 1.625D) {
+                double distDelta = 1.625D - distanceTo(frontCart);
+                frontCart.setPos(frontCart.position().add(frontCart.dirToVec3().scale(distDelta)));
+            }
             setPos(frontCart.position().add(oppDirToVec3().scale(1.625D)));
 
             AbstractCart cart = this; //PULLING BACK CARTS UP TO CORRECT COORDS
@@ -485,6 +498,8 @@ public abstract class AbstractCart extends AbstractMinecart {
             resetFront();
         }
 
+        level.playSound(level.getNearestPlayer(this, 0.0D),
+                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
         remove(RemovalReason.KILLED);
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
             switch (getCartType()) {
@@ -497,12 +512,18 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void discard() { //in creative
         if (hasBackCart) backCart.resetFront();
         if (hasFrontCart) frontCart.resetBack();
+
+        level.playSound(level.getNearestPlayer(this, 0.0D),
+                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
         remove(Entity.RemovalReason.DISCARDED);
     }
     @Override
     public void destroy(@NotNull DamageSource damageSource) { //in survival
         if (hasBackCart) backCart.resetFront();
         if (hasFrontCart) frontCart.resetBack();
+
+        level.playSound(level.getNearestPlayer(this, 0.0D),
+                new BlockPos(position()), ccSoundInit.CART_DEATH.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
         remove(Entity.RemovalReason.KILLED);
 
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
@@ -546,35 +567,19 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         debugMode = compoundTag.getBoolean("Debug");
         entityData.set(DATA_DEBUG_MODE, debugMode);
-        hasFrontCart = compoundTag.getBoolean("FrontCartExists");
-        entityData.set(DATA_FRONTCART_EXISTS, hasFrontCart);
-        hasBackCart = compoundTag.getBoolean("BackCartExists");
-        entityData.set(DATA_BACKCART_EXISTS, hasBackCart);
+        hadFrontCart = compoundTag.getBoolean("FrontCartExists");
+        hadBackCart = compoundTag.getBoolean("BackCartExists");
 
         if (compoundTag.getBoolean("BackCartExists")) {
             int[] cartPos;
             cartPos = compoundTag.getIntArray("BackCartExistsPos");
             posOfBackCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
-
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfBackCart));
-            if (!rangeCart.isEmpty()) {
-                AbstractCart backCart = rangeCart.get(0);
-                backCart.connectFront(this);
-                connectBack(backCart);
-            }
         }
 
         if (compoundTag.getBoolean("FrontCartExists")) {
             int[] cartPos;
             cartPos = compoundTag.getIntArray("FrontCartExistsPos");
             posOfFrontCart = new BlockPos(cartPos[0], cartPos[1], cartPos[2]);
-
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfFrontCart));
-            if (!rangeCart.isEmpty()) {
-                AbstractCart frontCart = rangeCart.get(0);
-                frontCart.connectBack(this);
-                connectFront(frontCart);
-            }
         }
     } //TODO remove debug
     public void saveNearCartData(AbstractCart cart, CompoundTag compoundTag, String name, EntityDataAccessor<Boolean> accessor) {
@@ -590,21 +595,27 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     }
     public void restoreRelativeCarts() {
-        if (backCart == null && hasBackCart) {
+        if (backCart == null && hadBackCart) {
             ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfBackCart));
             if (!rangeCart.isEmpty()) {
                 AbstractCart backCart = rangeCart.get(0);
                 backCart.connectFront(this);
                 connectBack(backCart);
+
+                hasBackCart = true;
+                entityData.set(DATA_BACKCART_EXISTS, true);
             }
         }
 
-        if (frontCart == null && hasFrontCart) {
+        if (frontCart == null && hadFrontCart) {
             ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, new AABB(posOfFrontCart));
             if (!rangeCart.isEmpty()) {
                 AbstractCart frontCart = rangeCart.get(0);
                 frontCart.connectBack(this);
                 connectFront(frontCart);
+
+                hasFrontCart = true;
+                entityData.set(DATA_FRONTCART_EXISTS, true);
             }
         }
     }
@@ -726,7 +737,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static boolean isRail(BlockState blockState) {
         return blockState.is(Blocks.RAIL) || blockState.is(Blocks.POWERED_RAIL) || blockState.is(Blocks.ACTIVATOR_RAIL) || blockState.is(Blocks.DETECTOR_RAIL);
     }
-    public boolean railIsRotating(RailShape shape) {
+    public static boolean railIsRotating(RailShape shape) {
         return shape.equals(RailShape.NORTH_EAST) || shape.equals(RailShape.NORTH_WEST) || shape.equals(RailShape.SOUTH_EAST) || shape.equals(RailShape.SOUTH_WEST);
     }
     public RailShape anyRailShape(BlockState blockState, BlockPos blockPos) {
