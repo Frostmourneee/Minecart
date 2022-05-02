@@ -3,6 +3,7 @@ package com.frostmourneee.minecart.common.entity;
 import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -150,7 +151,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public void collisionProcessing() {
         AABB box;
-
         if (getCollisionHandler() != null) box = getCollisionHandler().getMinecartCollisionBox(this);
         else box = getBoundingBox().inflate(0.2D, 0.0D, 0.2D);
 
@@ -313,7 +313,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.set(DATA_FRONTCART_EXISTS, true);
 
         level.playSound(level.getNearestPlayer(this, 0.0D), new BlockPos(position()), ccSoundInit.CART_CLAMP.get(),
-                SoundSource.BLOCKS, 1.0F, 1.0F); //DON'T KNOW PURPOSE OF 0.0D*/
+                SoundSource.BLOCKS, 1.0F, 1.0F);
     }
     public void connectBack(AbstractCart cart) {
         backCart = cart;
