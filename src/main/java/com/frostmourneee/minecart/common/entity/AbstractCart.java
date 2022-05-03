@@ -48,6 +48,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public static final EntityDataAccessor<Boolean> DATA_BACKCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Boolean> DATA_NEED_SYNC = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
 
@@ -77,6 +78,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //My code starts
         initialization();
+        fieldsCalculationAndSidesSync();
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -146,10 +148,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     }
     public void initialization() {
-        delta = position().subtract(xOld, yOld, zOld);
-        verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
-        if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
-        if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
         if (initTick) {
             if (entityData.get(DATA_FRONTCART_EXISTS)) {
                 hadFrontCart = true;
@@ -160,6 +158,19 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             debugMode = entityData.get(DATA_DEBUG_MODE); //TODO debug
             initTick = false;
+        }
+    }
+    public void fieldsCalculationAndSidesSync() {
+        delta = position().subtract(xOld, yOld, zOld);
+        verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
+        if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
+        if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
+
+        if (entityData.get(DATA_NEED_SYNC) && (hasBackCart != entityData.get(DATA_BACKCART_EXISTS) || hasFrontCart != entityData.get(DATA_FRONTCART_EXISTS))) {
+            hasBackCart = entityData.get(DATA_BACKCART_EXISTS);
+            hasFrontCart = entityData.get(DATA_FRONTCART_EXISTS);
+
+            entityData.set(DATA_NEED_SYNC, false);
         }
     }
 
@@ -514,16 +525,19 @@ public abstract class AbstractCart extends AbstractMinecart {
     protected void comeOffTrack() {
         if (backCart != null) {
             backCart.resetFront();
-            backCart.setDeltaMovement(getDeltaMovement());
+            backCart.entityData.set(DATA_FRONTCART_EXISTS, false);
+            backCart.entityData.set(DATA_NEED_SYNC, true);
             resetBack();
         }
 
         if (frontCart != null) {
             frontCart.resetBack();
+            frontCart.entityData.set(DATA_BACKCART_EXISTS, false);
+            frontCart.entityData.set(DATA_NEED_SYNC, true);
             resetFront();
         }
 
-        cartSound(10.0F, ccSoundInit.CART_DEATH.get());
+        cartSound(0.0F, ccSoundInit.CART_DEATH.get());
         remove(RemovalReason.KILLED);
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
             switch (getCartType()) {
@@ -534,18 +548,30 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     @Override
     public void discard() { //in creative
-        if (hasBackCart) backCart.resetFront();
-        if (hasFrontCart) frontCart.resetBack();
+        if (hasBackCart) {
+            backCart.resetFront();
+            resetBack();
+        }
+        if (hasFrontCart) {
+            frontCart.resetBack();
+            resetFront();
+        }
 
-        cartSound(10.0F, ccSoundInit.CART_DEATH.get());
+        cartSound(0.0F, ccSoundInit.CART_DEATH.get());
         remove(Entity.RemovalReason.DISCARDED);
     }
     @Override
     public void destroy(@NotNull DamageSource damageSource) { //in survival
-        if (hasBackCart) backCart.resetFront();
-        if (hasFrontCart) frontCart.resetBack();
+        if (hasBackCart) {
+            backCart.resetFront();
+            resetBack();
+        }
+        if (hasFrontCart) {
+            frontCart.resetBack();
+            resetFront();
+        }
 
-        cartSound(10.0F, ccSoundInit.CART_DEATH.get());
+        cartSound(0.0F, ccSoundInit.CART_DEATH.get());
         remove(Entity.RemovalReason.KILLED);
 
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
@@ -570,6 +596,8 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         entityData.define(DATA_FRONTCART_EXISTS, false);
         entityData.define(DATA_BACKCART_EXISTS, false);
+        entityData.define(DATA_NEED_SYNC, false);
+
         entityData.define(DATA_DEBUG_MODE, false);
     } //TODO remove debug
     @Override
@@ -783,6 +811,8 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         if (player != null) level.playSound(player, new BlockPos(position()),
                 soundEvent, SoundSource.BLOCKS, 1.0F - distanceTo(player) / distance + 0.1F, 1.0F);
+        else if (distance == 0.0F) level.playSound(null, new BlockPos(position()),
+                soundEvent, SoundSource.BLOCKS, 1.0F, 1.0F);
     }
 
     public enum Type {
