@@ -14,8 +14,6 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.animal.IronGolem;
@@ -48,7 +46,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public static final EntityDataAccessor<Boolean> DATA_BACKCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
-    public static final EntityDataAccessor<Boolean> DATA_NEED_SYNC = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
 
@@ -64,7 +61,6 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean hasFrontCart = false;
     public boolean hadBackCart = false;
     public boolean hadFrontCart = false;
-    public boolean initTick = true;
 
     public boolean debugMode = false; //TODO remove debug
     public int debugCounter = 0;
@@ -77,8 +73,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         vanillaTick();
 
         //My code starts
-        initialization();
-        fieldsCalculationAndSidesSync();
+        fieldsInitAndSidesSync();
 
         restoreRelativeCarts();
         posCorrectionToFrontCart();
@@ -147,30 +142,23 @@ public abstract class AbstractCart extends AbstractMinecart {
             firstTick = false;
         }
     }
-    public void initialization() {
-        if (initTick) {
-            if (entityData.get(DATA_FRONTCART_EXISTS)) {
-                hadFrontCart = true;
-            }
-            if (entityData.get(DATA_BACKCART_EXISTS)) {
-                hadBackCart = true;
-            }
-
-            debugMode = entityData.get(DATA_DEBUG_MODE); //TODO debug
-            initTick = false;
-        }
-    }
-    public void fieldsCalculationAndSidesSync() {
+    public void fieldsInitAndSidesSync() {
         delta = position().subtract(xOld, yOld, zOld);
         verticalMovementType.add(goesUp() ? 1 : goesFlat() ? 0 : -1);
         if (verticalMovementType.size() == 3) verticalMovementType.remove(0);
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
 
-        if (entityData.get(DATA_NEED_SYNC) && (hasBackCart != entityData.get(DATA_BACKCART_EXISTS) || hasFrontCart != entityData.get(DATA_FRONTCART_EXISTS))) {
-            hasBackCart = entityData.get(DATA_BACKCART_EXISTS);
-            hasFrontCart = entityData.get(DATA_FRONTCART_EXISTS);
+        if (entityData.get(DATA_FRONTCART_EXISTS) && frontCart == null) hadFrontCart = true;
+        if (entityData.get(DATA_BACKCART_EXISTS) && backCart == null) hadBackCart = true;
 
-            entityData.set(DATA_NEED_SYNC, false);
+        if (debugMode != entityData.get(DATA_DEBUG_MODE)) debugMode = entityData.get(DATA_DEBUG_MODE); //TODO remove debug
+        if (hasFrontCart != entityData.get(DATA_FRONTCART_EXISTS) && !hadFrontCart) {
+            hasFrontCart = entityData.get(DATA_FRONTCART_EXISTS);
+            if (!hasFrontCart) frontCart = null;
+        }
+        if (hasBackCart != entityData.get(DATA_BACKCART_EXISTS) && !hadBackCart) {
+            hasBackCart = entityData.get(DATA_BACKCART_EXISTS);
+            if (!hasBackCart) backCart = null;
         }
     }
 
@@ -277,7 +265,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                         if (!zeroDeltaBigIndent() && ((AbstractCart) entity).zeroDeltaBigIndent()) {
                             if (hasBackCart) {
                                 backCart.resetFront();
-                                backCart.setDeltaMovement(getDeltaMovement());
+                                resetBack();
                             }
 
                             cartSound(10.0F, ccSoundInit.CART_DEATH.get());
@@ -291,7 +279,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                         if (!zeroDeltaBigIndent() && nearZero(entity.deltaMovement, 5.0E-1)) {
                             if (hasBackCart) {
                                 backCart.resetFront();
-                                backCart.setDeltaMovement(getDeltaMovement());
+                                resetFront();
                             }
 
                             cartSound(10.0F, ccSoundInit.CART_DEATH.get());
@@ -317,10 +305,12 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public void resetFront() {
         hasFrontCart = false;
+        entityData.set(DATA_FRONTCART_EXISTS, false);
         frontCart = null;
     }
     public void resetBack() {
         hasBackCart = false;
+        entityData.set(DATA_BACKCART_EXISTS, false);
         backCart = null;
     }
     public void resetFull() {
@@ -330,10 +320,12 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void connectFront(AbstractCart cart) {
         frontCart = cart;
         hasFrontCart = true;
+        entityData.set(DATA_FRONTCART_EXISTS, true);
     }
     public void connectBack(AbstractCart cart) {
         backCart = cart;
         hasBackCart = true;
+        entityData.set(DATA_BACKCART_EXISTS, true);
     }
 
     public void posCorrectionToFrontCart() {
@@ -358,7 +350,6 @@ public abstract class AbstractCart extends AbstractMinecart {
                     isPosCorrected = true;
                 }
             }
-
         }
     }
 
@@ -523,21 +514,8 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     @Override
     protected void comeOffTrack() {
-        if (backCart != null) {
-            backCart.resetFront();
-            backCart.entityData.set(DATA_FRONTCART_EXISTS, false);
-            backCart.entityData.set(DATA_NEED_SYNC, true);
-            resetBack();
-        }
+        death();
 
-        if (frontCart != null) {
-            frontCart.resetBack();
-            frontCart.entityData.set(DATA_BACKCART_EXISTS, false);
-            frontCart.entityData.set(DATA_NEED_SYNC, true);
-            resetFront();
-        }
-
-        cartSound(0.0F, ccSoundInit.CART_DEATH.get());
         remove(RemovalReason.KILLED);
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
             switch (getCartType()) {
@@ -545,42 +523,38 @@ public abstract class AbstractCart extends AbstractMinecart {
                 case LOCOMOTIVE -> spawnAtLocation(LOCOMOTIVE_ITEM.get());
             }
         }
-    }
+    }  //SERVER ONLY
     @Override
-    public void discard() { //in creative
-        if (hasBackCart) {
-            backCart.resetFront();
-            resetBack();
-        }
-        if (hasFrontCart) {
-            frontCart.resetBack();
-            resetFront();
-        }
+    public void discard() {
+        death();
 
-        cartSound(0.0F, ccSoundInit.CART_DEATH.get());
         remove(Entity.RemovalReason.DISCARDED);
-    }
+    } //in creative  //SERVER ONLY
     @Override
-    public void destroy(@NotNull DamageSource damageSource) { //in survival
-        if (hasBackCart) {
-            backCart.resetFront();
-            resetBack();
-        }
-        if (hasFrontCart) {
-            frontCart.resetBack();
-            resetFront();
-        }
+    public void destroy(@NotNull DamageSource damageSource) {
+        death();
 
-        cartSound(0.0F, ccSoundInit.CART_DEATH.get());
         remove(Entity.RemovalReason.KILLED);
-
         if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
             switch (getCartType()) {
                 case WAGON -> spawnAtLocation(WAGON_ITEM.get());
                 case LOCOMOTIVE -> spawnAtLocation(LOCOMOTIVE_ITEM.get());
             }
         }
-    }
+    } //in survival  //SERVER ONLY
+    public void death() {
+        if (backCart != null) {
+            backCart.resetFront();
+            resetBack();
+        }
+
+        if (frontCart != null) {
+            frontCart.resetBack();
+            resetFront();
+        }
+
+        cartSound(0.0F, ccSoundInit.CART_DEATH.get());
+    }  //SERVER ONLY
 
     @Override
     public ItemStack getPickResult() {
@@ -596,28 +570,27 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         entityData.define(DATA_FRONTCART_EXISTS, false);
         entityData.define(DATA_BACKCART_EXISTS, false);
-        entityData.define(DATA_NEED_SYNC, false);
 
         entityData.define(DATA_DEBUG_MODE, false);
     } //TODO remove debug
     @Override
-    protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) { //SERVER ONLY
+    protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.addAdditionalSaveData(compoundTag);
 
         compoundTag.putBoolean("HasFrontCart", hasFrontCart);
         compoundTag.putBoolean("HasBackCart", hasBackCart);
 
         compoundTag.putBoolean("Debug", debugMode);
-    } //TODO remove debug
+    } //TODO remove debug  //SERVER ONLY
     @Override
-    protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) { //SERVER ONLY
+    protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.readAdditionalSaveData(compoundTag);
 
         entityData.set(DATA_DEBUG_MODE, compoundTag.getBoolean("Debug"));
 
         entityData.set(DATA_BACKCART_EXISTS, compoundTag.getBoolean("HasBackCart"));
         entityData.set(DATA_FRONTCART_EXISTS, compoundTag.getBoolean("HasFrontCart"));
-    } //TODO remove debug
+    } //TODO remove debug  //SERVER ONLY
 
     public void restoreRelativeCarts() {
         if (backCart != null) hadBackCart = false;
@@ -724,8 +697,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         return cartsBehind();
     }
     public int wagonsLength() {
-        return wagonsAhead() + wagonsBehind() + 1;
-    } //SERVER ONLY
+        return wagonsAhead() + wagonsBehind() + 1;}
     public int trainLength() {
         return getLocomotive() == null ? wagonsLength() : wagonsLength() + 1;
     }
