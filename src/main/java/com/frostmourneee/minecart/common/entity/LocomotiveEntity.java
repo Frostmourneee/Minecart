@@ -94,7 +94,10 @@ public class LocomotiveEntity extends AbstractCart {
             zPush = getZ() - player.getZ();
         }
 
-        if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) debugMode = !debugMode; //TODO remove debug
+        if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) {
+            debugMode = !debugMode; //TODO remove debug
+            entityData.set(DATA_DEBUG_MODE, debugMode);
+        }
 
         return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
     }
@@ -210,7 +213,7 @@ public class LocomotiveEntity extends AbstractCart {
     public void setDeltaMovement(Vec3 vec) {
         deltaMovement = vec;
 
-        if (deltaMovement.length() < 1.0E-3) deltaMovement = Vec3.ZERO;
+        if (deltaMovement.length() < 1.0E-4) deltaMovement = Vec3.ZERO;
     }
     @Override
     protected double getMaxSpeed() {

@@ -4,8 +4,6 @@ import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -20,8 +18,6 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-
-import static com.frostmourneee.minecart.ccUtil.customPrint;
 
 public class WagonEntity extends AbstractCart {
 
@@ -43,7 +39,10 @@ public class WagonEntity extends AbstractCart {
         if (ret.consumesAction()) return ret;
         ItemStack itemStack = player.getItemInHand(hand);
 
-        if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) debugMode = !debugMode; //TODO remove debug
+        if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
+            debugMode = !debugMode; //TODO remove debug
+            entityData.set(DATA_DEBUG_MODE, debugMode);
+        }
 
         if (canBeClamped(itemStack)) {
             if (hasFrontCart) {
@@ -84,27 +83,17 @@ public class WagonEntity extends AbstractCart {
         double d25 = mc.getMaxSpeedWithRail();
         Vec3 vec3d1 = mc.getDeltaMovement();
 
-        //Dempfer
-        /*if (hasFrontCart) { //May be here are spikes' reason, idk
-            double dist = frontCart.position().subtract(position().add(0.0D,0.0625D, 0.0D)).length(); //upping cause -60 & -59,9375
-
-            //System.out.println("before " + d25 + " " + (dist - 1.925D));
-            //d25 += (dist - 1.925D) / 2.0D;
-            System.out.println(dist);
-            System.out.println(" ");
-        }*/
-
         mc.move(MoverType.SELF, new Vec3(Mth.clamp(d24 * vec3d1.x, -d25, d25), 0.0D, Mth.clamp(d24 * vec3d1.z, -d25, d25)));
     }
     @Override
     public void setDeltaMovement(@NotNull Vec3 vec) {
         if (hasFrontCart) {
-            if (frontCart.isStopped()) deltaMovement = Vec3.ZERO;
+            if (frontCart.zeroDelta()) deltaMovement = Vec3.ZERO;
             else if (frontCart.position().subtract(position()).length() > 1.625D)
                 deltaMovement = frontCart.deltaMovement;
         } else deltaMovement = vec;
 
-        if (deltaMovement.length() < 1.0E-3) deltaMovement = Vec3.ZERO;
+        if (deltaMovement.length() < 1.0E-4) deltaMovement = Vec3.ZERO;
     }
 
     @Override
