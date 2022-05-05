@@ -88,8 +88,10 @@ public class WagonEntity extends AbstractCart {
     @Override
     public void setDeltaMovement(@NotNull Vec3 vec) {
         if (hasFrontCart) {
+            double dist = frontCart.position().subtract(position()).length();
+
             if (frontCart.zeroDelta()) deltaMovement = Vec3.ZERO;
-            else if (frontCart.position().subtract(position()).length() > 1.625D)
+            else if (dist >= 1.625D)
                 deltaMovement = frontCart.deltaMovement;
         } else deltaMovement = vec;
 

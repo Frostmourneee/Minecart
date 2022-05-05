@@ -473,13 +473,27 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void tryingToClamp() {
         ArrayList<AbstractCart> frontAbstractCart;
         AABB areaOfSearch = getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
-        frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 3 FRONT BLOCKS
-        frontAbstractCart.removeIf(cart -> cart.equals(this));
+        ArrayList<BlockPos> furtherBlockPos = ccUtil.getAllBlockPosesInBox(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
 
-        if (frontAbstractCart.isEmpty()) {
-            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
+        boolean canScanForFrontCart = true;
+        for (BlockPos blockPos : furtherBlockPos) {
+            if (!level.getBlockState(blockPos).is(BlockTags.RAILS)) {
+                canScanForFrontCart = false;
+                break;
+            }
+        }
+
+        if (canScanForFrontCart) {
+            frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 4 FRONT BLOCKS
+            frontAbstractCart.removeIf(cart -> cart.equals(this));
+
+            if (!frontAbstractCart.isEmpty()) {
+                connection(frontAbstractCart);
+            } else {
+                cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
+            }
         } else {
-            connection(frontAbstractCart);
+            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
         }
     }
     public void connection(ArrayList<AbstractCart> frontAbstractCart) {

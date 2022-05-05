@@ -5,6 +5,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
+
 public class ccUtil {
 
     ccUtil() {}
@@ -48,6 +50,37 @@ public class ccUtil {
 
             return new AABB(x1, y1, z1, x2, y2, z2);
         } else return new AABB(pos1);
+    }
+    /**
+     * Two given BlockPoses considered to be diagonally opposite. Then an AABB of blocks is built by given two BlockPos.
+     * Method returns array of all BlockPoses in that AABB. Then this array can be considered as three-dimensional array.
+     * First "floor" begins from the smallest X coordinate blocks to the largest X coordinate block (with same Z coordinate).
+     * On the next step Z = Z + 1; When the first "floor" has been put into array then Y = Y + 1.
+     */
+    public static ArrayList<BlockPos> getAllBlockPosesInBox(BlockPos pos1, BlockPos pos2) {
+        ArrayList<BlockPos> result = new ArrayList<>();
+
+        if (pos1 != pos2) {
+            int dx = pos1.getX() - pos2.getX(); //3
+            int dy = pos1.getY() - pos2.getY(); //0
+            int dz = pos1.getZ() - pos2.getZ(); //0
+
+            int x = dx <= 0 ? pos1.getX() : pos2.getX(); //12
+            int y = dy <= 0 ? pos1.getY() : pos2.getY(); //-60
+            int z = dz <= 0 ? pos1.getZ() : pos2.getZ(); //12
+
+            for (int i = 0; i < Math.abs(dy) + 1; i++) {
+                for (int j = 0; j < Math.abs(dz) + 1; j++) {
+                    for (int k = 0; k < Math.abs(dx) + 1; k++) {
+                        result.add(new BlockPos(x + k, y + i, z + j));
+                    }
+                }
+            }
+        } else {
+            result.add(pos1);
+        }
+
+        return result;
     }
 
     public static void customPrint(Object... str) {
