@@ -47,7 +47,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_BACKCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
 
-    public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove debug
+    public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
 
     public Vec3 delta = Vec3.ZERO;
     public ArrayList<Integer> verticalMovementType = new ArrayList<>(); //1 = up; 0 = flat; -1 = down
@@ -62,7 +62,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean hadBackCart = false;
     public boolean hadFrontCart = false;
 
-    public boolean debugMode = false; //TODO remove debug
+    public boolean debugMode = false; //TODO remove
     public int debugCounter = 0;
 
     public AbstractCart backCart = null;
@@ -151,7 +151,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (entityData.get(DATA_FRONTCART_EXISTS) && frontCart == null) hadFrontCart = true;
         if (entityData.get(DATA_BACKCART_EXISTS) && backCart == null) hadBackCart = true;
 
-        if (debugMode != entityData.get(DATA_DEBUG_MODE)) debugMode = entityData.get(DATA_DEBUG_MODE); //TODO remove debug
+        if (debugMode != entityData.get(DATA_DEBUG_MODE)) debugMode = entityData.get(DATA_DEBUG_MODE); //TODO remove
         if (hasFrontCart != entityData.get(DATA_FRONTCART_EXISTS) && !hadFrontCart) {
             hasFrontCart = entityData.get(DATA_FRONTCART_EXISTS);
             if (!hasFrontCart) frontCart = null;
@@ -585,8 +585,8 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_FRONTCART_EXISTS, false);
         entityData.define(DATA_BACKCART_EXISTS, false);
 
-        entityData.define(DATA_DEBUG_MODE, false);
-    } //TODO remove debug
+        entityData.define(DATA_DEBUG_MODE, false); //TODO remove
+    }
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.addAdditionalSaveData(compoundTag);
@@ -594,17 +594,17 @@ public abstract class AbstractCart extends AbstractMinecart {
         compoundTag.putBoolean("HasFrontCart", hasFrontCart);
         compoundTag.putBoolean("HasBackCart", hasBackCart);
 
-        compoundTag.putBoolean("Debug", debugMode);
-    } //TODO remove debug  //SERVER ONLY
+        compoundTag.putBoolean("Debug", debugMode); //TODO remove
+    } //SERVER ONLY
     @Override
     protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.readAdditionalSaveData(compoundTag);
 
-        entityData.set(DATA_DEBUG_MODE, compoundTag.getBoolean("Debug"));
+        entityData.set(DATA_DEBUG_MODE, compoundTag.getBoolean("Debug")); //TODO remove
 
         entityData.set(DATA_BACKCART_EXISTS, compoundTag.getBoolean("HasBackCart"));
         entityData.set(DATA_FRONTCART_EXISTS, compoundTag.getBoolean("HasFrontCart"));
-    } //TODO remove debug  //SERVER ONLY
+    } //SERVER ONLY
 
     public void restoreRelativeCarts() {
         if (backCart != null) hadBackCart = false;
@@ -723,7 +723,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         return delta.y < 0;
     }
     public boolean goesFlat() {
-        if (zeroDelta() && isRail(level.getBlockState(blockPosition()))) {
+        if (zeroDelta() && level.getBlockState(blockPosition()).is(BlockTags.RAILS)) {
             return !anyRailShape(level.getBlockState(blockPosition()), blockPosition()).isAscending();
         } else return nearZero(delta.y, 1.0E-3);
     }
@@ -761,20 +761,17 @@ public abstract class AbstractCart extends AbstractMinecart {
         BlockPos blockPos = getOnPos().above();
         BlockState blockState = level.getBlockState(blockPos);
 
-        if (isRail(blockState)) {
+        if (blockState.is(BlockTags.RAILS)) {
             RailShape shape = anyRailShape(blockState, blockPos);
             return railIsRotating(shape);
         } else return false;
     }
 
-    public static boolean isRail(BlockState blockState) {
-        return blockState.is(Blocks.RAIL) || blockState.is(Blocks.POWERED_RAIL) || blockState.is(Blocks.ACTIVATOR_RAIL) || blockState.is(Blocks.DETECTOR_RAIL);
-    }
     public static boolean railIsRotating(RailShape shape) {
         return shape.equals(RailShape.NORTH_EAST) || shape.equals(RailShape.NORTH_WEST) || shape.equals(RailShape.SOUTH_EAST) || shape.equals(RailShape.SOUTH_WEST);
     }
     public RailShape anyRailShape(BlockState blockState, BlockPos blockPos) {
-        if (isRail(blockState)) return ((BaseRailBlock)blockState.getBlock())
+        if (blockState.is(BlockTags.RAILS)) return ((BaseRailBlock)blockState.getBlock())
                 .getRailDirection(blockState, this.level, blockPos, this);
         else return null;
     }

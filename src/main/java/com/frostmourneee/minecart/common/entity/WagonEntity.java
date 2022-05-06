@@ -4,6 +4,7 @@ import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -40,7 +41,7 @@ public class WagonEntity extends AbstractCart {
         ItemStack itemStack = player.getItemInHand(hand);
 
         if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
-            debugMode = !debugMode; //TODO remove debug
+            debugMode = !debugMode; //TODO remove
             entityData.set(DATA_DEBUG_MODE, debugMode);
         }
 
@@ -118,7 +119,7 @@ public class WagonEntity extends AbstractCart {
         BlockState blockState = level.getBlockState(blockPos);
 
         return itemStack.getItem().equals(ccItemInit.CLAMP.get())
-                && isRail(blockState)
+                && blockState.is(BlockTags.RAILS)
                 && !anyRailShape(blockState, blockPos).isAscending();
     }
 
