@@ -33,5 +33,11 @@
     "sounds": [
       "minecart:cart_death"
     ]
+  },
+
+  "util.test_sound" : {
+    "sounds": [
+      "minecart:test_sound"
+    ]
   }
 }

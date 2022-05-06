@@ -11,6 +11,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
@@ -95,7 +96,7 @@ public class LocomotiveEntity extends AbstractCart {
         }
 
         if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) {
-            debugMode = !debugMode; //TODO remove debug
+            debugMode = !debugMode; //TODO remove
             entityData.set(DATA_DEBUG_MODE, debugMode);
         }
 
@@ -116,7 +117,7 @@ public class LocomotiveEntity extends AbstractCart {
                     HopperBlockEntity hopperBlockEntity = null;
                     Vec3 vecToLocomotive = new Vec3(rangeNewMinecartEntities.get(0).getX() - (blockPos.getX() + 0.5D), rangeNewMinecartEntities.get(0).getY() - blockPos.getY(), rangeNewMinecartEntities.get(0).getZ() - (blockPos.getZ() + 0.5D));
 
-                    if (ccUtil.vecToDirection(vecToLocomotive) != null) if (isRail(level.getBlockState(blockPos.relative(ccUtil.vecToDirection(vecToLocomotive)))))
+                    if (ccUtil.vecToDirection(vecToLocomotive) != null) if (level.getBlockState(blockPos.relative(ccUtil.vecToDirection(vecToLocomotive))).is(BlockTags.RAILS))
                         hopperBlockEntity = HopperRotation(ccUtil.vecToDirection(vecToLocomotive), blockPos);
 
                     if (hopperBlockEntity != null && hasFuelItem(hopperBlockEntity, i)) {
@@ -257,7 +258,7 @@ public class LocomotiveEntity extends AbstractCart {
         compoundTag.putDouble("PushX", xPush);
         compoundTag.putDouble("PushZ", zPush);
         compoundTag.putShort("Fuel", (short)fuel);
-    } //TODO remove debug
+    }
     @Override
     protected void readAdditionalSaveData(CompoundTag compoundTag) {
         super.readAdditionalSaveData(compoundTag);
@@ -265,7 +266,7 @@ public class LocomotiveEntity extends AbstractCart {
         xPush = compoundTag.getDouble("PushX");
         zPush = compoundTag.getDouble("PushZ");
         fuel = compoundTag.getShort("Fuel");
-    } //TODO remove debug
+    }
 
     public boolean hasFuel() {
         return entityData.get(DATA_ID_FUEL);

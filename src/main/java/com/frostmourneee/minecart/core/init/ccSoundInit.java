@@ -29,6 +29,9 @@ public final class ccSoundInit {
     public static final RegistryObject<SoundEvent> LOCOMOTIVE_START = SOUNDS.register("entity.locomotive.start",
             () -> new SoundEvent(new ResourceLocation(minecart.MOD_ID, "entity.locomotive.start")));
 
+    public static final RegistryObject<SoundEvent> TEST_SOUND = SOUNDS.register("util.test_sound",
+            () -> new SoundEvent(new ResourceLocation(minecart.MOD_ID, "util.test_sound")));
+
     private ccSoundInit() {
 
     }
