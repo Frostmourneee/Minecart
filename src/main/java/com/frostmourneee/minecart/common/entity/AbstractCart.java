@@ -179,6 +179,14 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     private void clampingToFrontCart() {
         if (isClamping) {
+            for (BlockPos blockPos : ccUtil.getAllBlockPosesInBox(new BlockPos(position()), new BlockPos(utilCart.position()))) {
+                if (!level.getBlockState(blockPos).is(BlockTags.RAILS)) {
+                    setDeltaMovement(getDeltaMovement().scale(0.2D));
+                    setIsClamping(false);
+                    return;
+                }
+            }
+
             if (distanceTo(utilCart) > 5.0D) setIsClamping(false); //+2*0.5D because connection calculates not distance between points but between hitboxes
             if (distanceTo(utilCart) > 1.65D &&
                     getDirection().equals(utilCart.getDirection())) setDeltaMovement(utilCart.dirToVec3().scale(0.05D));
@@ -524,45 +532,44 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void tryingToClamp() {
         ArrayList<AbstractCart> frontAbstractCart;
         AABB areaOfSearch = getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
-        ArrayList<BlockPos> furtherBlockPos = ccUtil.getAllBlockPosesInBox(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
 
-        boolean canScanForFrontCart = true;
-        for (BlockPos blockPos : furtherBlockPos) {
-            if (!level.getBlockState(blockPos).is(BlockTags.RAILS)) {
-                canScanForFrontCart = false;
-                break;
+        frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 4 FRONT BLOCKS
+        frontAbstractCart.removeIf(cart -> cart.equals(this));
+
+        if (!frontAbstractCart.isEmpty()) {
+            utilCart = frontAbstractCart.get(0);
+            for (int i = 1; i < frontAbstractCart.size(); i++) {
+                if (frontAbstractCart.get(i).distanceTo(this) < utilCart.distanceTo(this)) {
+                    utilCart = frontAbstractCart.get(i);
+                }
+            } //SEARCHING FOR THE NEAREST CART
+
+            ArrayList<BlockPos> furtherBlockPos = ccUtil.getAllBlockPosesInBox
+            (new BlockPos(position()).relative(getDirection()), new BlockPos(utilCart.position()));
+
+            boolean canScanForFrontCart = true;
+            for (BlockPos blockPos : furtherBlockPos) {
+                if (!level.getBlockState(blockPos).is(BlockTags.RAILS)) {
+                    canScanForFrontCart = false;
+                    break;
+                }
             }
-        }
 
-        if (canScanForFrontCart) {
-            frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 4 FRONT BLOCKS
-            frontAbstractCart.removeIf(cart -> cart.equals(this));
-
-            if (!frontAbstractCart.isEmpty()) {
-                connection(frontAbstractCart);
+            if (canScanForFrontCart) {
+                connection(utilCart);
             } else {
-                customPrint(this, "voshel1");
                 cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
             }
         } else {
-            customPrint(this, "voshel2");
             cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
         }
     }
-    public void connection(ArrayList<AbstractCart> frontAbstractCart) {
-        for (int i = 1; i < frontAbstractCart.size(); i++) { //SEARCHING FOR THE NEAREST
-            if (frontAbstractCart.get(i).distanceTo(this) < frontAbstractCart.get(0).distanceTo(this)) {
-                frontAbstractCart.set(0, frontAbstractCart.get(i));
-            }
-        }
-
-        if (frontAbstractCart.get(0).getDirection().equals(getDirection())) {
+    public void connection(AbstractCart cart) {
+        if (cart.getDirection().equals(getDirection())) {
             setDeltaMovement(Vec3.ZERO);
-            frontAbstractCart.get(0).setDeltaMovement(Vec3.ZERO);
-            utilCart = frontAbstractCart.get(0);
+            cart.setDeltaMovement(Vec3.ZERO);
             setIsClamping(true);
         } else {
-            customPrint(this, "voshel3");
             cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
         }
     }
