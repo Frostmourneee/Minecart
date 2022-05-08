@@ -1,9 +1,7 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.minecart.ccUtil;
-import com.frostmourneee.minecart.core.init.PacketHandler;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
-import com.frostmourneee.minecart.core.network.ClientboundCartUpdatePacket;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -30,7 +28,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -67,14 +64,12 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isFindingBackCartAfterRejoin = false;
     public boolean isFindingFrontCartAfterRejoin = false;
     public boolean isClamping = false;
-    public boolean needSync = false;
 
     public boolean debugMode = false; //TODO remove
     public int debugCounter = 0;
 
     public AbstractCart backCart = null;
     public AbstractCart frontCart = null;
-    public AbstractCart utilCart = null;
 
     @Override
     public void tick() {
@@ -82,7 +77,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //My code starts
         fieldsInitAndSidesSync();
-        if (this instanceof WagonEntity) customPrint(this, isClamping, entityData.get(DATA_IS_CLAMPING));
+
         restoreRelativeCarts();
         clampingToFrontCart();
         posCorrectionToFrontCart();
@@ -102,6 +97,11 @@ public abstract class AbstractCart extends AbstractMinecart {
         handleNetherPortal();
         if (level.isClientSide) {
             if (lSteps > 0) {
+                /*if (hasFrontCart && frontCart.zeroDeltaHorizontal()) {
+                    lx = frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)).x;
+                    ly = frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)).y;
+                    lz = frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)).z;
+                }*/ //TODO need sync with server firstly (after stopping carts go away from each other)
                 double d5 = getX() + (lx - getX()) / (double)lSteps;
                 double d6 = getY() + (ly - getY()) / (double)lSteps;
                 double d7 = getZ() + (lz - getZ()) / (double)lSteps;
@@ -192,45 +192,75 @@ public abstract class AbstractCart extends AbstractMinecart {
             if (!hasBackCart) backCart = null;
         }
     }
-    private void clampingToFrontCart() {
+    public void clampingToFrontCart() {
         if (isClamping) {
-            for (BlockPos blockPos : ccUtil.getAllBlockPosesInBox(new BlockPos(position()), new BlockPos(utilCart.position()))) {
-                if (!level.getBlockState(blockPos).is(BlockTags.RAILS)) {
-                    setDeltaMovement(getDeltaMovement().scale(0.2D));
-                    setIsClamping(false);
-                    return;
-                }
-            }
+            ArrayList<AbstractCart> frontAbstractCart;
+            AABB areaOfSearch = getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
 
-            if (distanceTo(utilCart) > 5.0D) setIsClamping(false); //+2*0.5D because connection calculates not distance between points but between hitboxes
-            if (distanceTo(utilCart) > 1.65D &&
-                    getDirection().equals(utilCart.getDirection())) setDeltaMovement(utilCart.dirToVec3().scale(0.05D));
-            if (distanceTo(utilCart) < 1.625D ||
-                    (distanceTo(utilCart) >= 1.625D && distanceTo(utilCart) <= 1.825D && !getDirection().equals(utilCart.getDirection())))
-                setDeltaMovement(utilCart.oppDirToVec3().scale(0.05D));
-            if (distanceTo(utilCart) > 1.825D && !getDirection().equals(utilCart.getDirection())) setDeltaMovement(utilCart.dirToVec3().scale(0.05D));
-            if (distanceTo(utilCart) >= 1.625D && distanceTo(utilCart) <= 1.65D && getDirection().equals(utilCart.getDirection())) {
-                setDeltaMovement(Vec3.ZERO);
-                utilCart.connectBack(this);
-                setPos(utilCart.position().add(utilCart.oppDirToVec3().scale(1.625D)));
-                connectFront(utilCart);
+            frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 4 FRONT BLOCKS
+            frontAbstractCart.removeIf(cart -> cart.equals(this));
 
-                cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
+            if (!frontAbstractCart.isEmpty()) {
+                AbstractCart nearestCart = frontAbstractCart.get(0);
+                for (int i = 1; i < frontAbstractCart.size(); i++) {
+                    if (frontAbstractCart.get(i).distanceTo(this) < nearestCart.distanceTo(this)) {
+                        nearestCart = frontAbstractCart.get(i);
+                    }
+                } //SEARCHING FOR THE NEAREST CART
 
-                utilCart = null;
-                setIsClamping(false);
-            }
+                ArrayList<BlockPos> furtherBlockPos = getAllBlockPosesInBox
+                        (new BlockPos(position()).relative(getDirection()), new BlockPos(nearestCart.position()));
 
-            AbstractCart cart = this; //PULLING BACK CARTS UP TO CORRECT COORDS
-            while (cart.backCart != null) {
-                cart = cart.backCart;
-                cart.setDeltaMovement(Vec3.ZERO);
-                cart.setPos(cart.frontCart.position().add(oppDirToVec3().scale(1.625D)));
-            }
+                boolean canScanForFrontCart = true;
+                for (BlockPos blockPos : furtherBlockPos) {
+                    if (!level.getBlockState(blockPos).is(BlockTags.RAILS)) {
+                        canScanForFrontCart = false;
+                        break;
+                    }
+                } //Checks if blocks except rails are between this and potential frontCart
+
+                if (canScanForFrontCart) {
+                    if (!nearestCart.zeroDelta() && !nearestCart.getDirection().equals(getDirection())) {
+                        clampingFail();
+                        return;
+                    }
+
+                    if (distanceTo(nearestCart) > 1.65D && getDirection().equals(nearestCart.getDirection())) {
+                        setDeltaMovement(nearestCart.dirToVec3().scale(0.05D));
+                    }
+                    if (distanceTo(nearestCart) >= 1.625D && distanceTo(nearestCart) <= 1.65D && getDirection().equals(nearestCart.getDirection())
+                        || distanceTo(nearestCart) < 1.625D) {
+                        setDeltaMovement(Vec3.ZERO);
+                        nearestCart.connectBack(this);
+                        connectFront(nearestCart);
+                        setPos(nearestCart.position().add(nearestCart.oppDirToVec3().scale(1.625D)));
+
+                        cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
+
+                        setIsClamping(false);
+                        /*if (level.isClientSide) {
+                            lx = nearestCart.position().add(nearestCart.oppDirToVec3().scale(1.625D)).x;
+                            ly = nearestCart.position().add(nearestCart.oppDirToVec3().scale(1.625D)).y;
+                            lz = nearestCart.position().add(nearestCart.oppDirToVec3().scale(1.625D)).z;
+                        }*/ //TODO need sync with server firstly (after stopping carts go away from each other), before it works only without rejoin
+                    }
+
+                    AbstractCart cart = this; //PULLING BACK CARTS UP TO CORRECT COORDS
+                    while (cart.backCart != null) {
+                        cart = cart.backCart;
+                        cart.setDeltaMovement(Vec3.ZERO);
+                        cart.setPos(cart.frontCart.position().add(oppDirToVec3().scale(1.625D)));
+                    }
+                } else clampingFail();
+            } else clampingFail();
         }
-    } //WORKS ONLY WITHOUT REJOIN
+    }
     public boolean isCommonActing() {
         return !isFindingFrontCartAfterRejoin && !isFindingBackCartAfterRejoin && !isClamping;
+    }
+    public void clampingFail() {
+        setDeltaMovement(getDeltaMovement().scale(0.2D));
+        setIsClamping(false);
     }
 
     public void collisionProcessing() {
@@ -552,15 +582,15 @@ public abstract class AbstractCart extends AbstractMinecart {
         frontAbstractCart.removeIf(cart -> cart.equals(this));
 
         if (!frontAbstractCart.isEmpty()) {
-            utilCart = frontAbstractCart.get(0);
+            AbstractCart nearestCart = frontAbstractCart.get(0);
             for (int i = 1; i < frontAbstractCart.size(); i++) {
-                if (frontAbstractCart.get(i).distanceTo(this) < utilCart.distanceTo(this)) {
-                    utilCart = frontAbstractCart.get(i);
+                if (frontAbstractCart.get(i).distanceTo(this) < nearestCart.distanceTo(this)) {
+                    nearestCart = frontAbstractCart.get(i);
                 }
             } //SEARCHING FOR THE NEAREST CART
 
-            ArrayList<BlockPos> furtherBlockPos = ccUtil.getAllBlockPosesInBox
-            (new BlockPos(position()).relative(getDirection()), new BlockPos(utilCart.position()));
+            ArrayList<BlockPos> furtherBlockPos = getAllBlockPosesInBox
+            (new BlockPos(position()).relative(getDirection()), new BlockPos(nearestCart.position()));
 
             boolean canScanForFrontCart = true;
             for (BlockPos blockPos : furtherBlockPos) {
@@ -571,19 +601,25 @@ public abstract class AbstractCart extends AbstractMinecart {
             }
 
             if (canScanForFrontCart) {
-                connection(utilCart);
+                if (nearestCart.getDirection().equals(getDirection())) {
+                    setDeltaMovement(Vec3.ZERO);
+                    nearestCart.setDeltaMovement(Vec3.ZERO);
+
+                    if (distanceTo(nearestCart) > 1.625D) setIsClamping(true);
+                    else if (!hasBackCart) {
+                        nearestCart.connectBack(this);
+                        connectFront(nearestCart);
+                        setPos(nearestCart.position().add(nearestCart.oppDirToVec3().scale(1.625D)));
+                        cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
+                    } else {
+                        cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
+                    }
+                } else {
+                    cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
+                }
             } else {
                 cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
             }
-        } else {
-            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
-        }
-    }
-    public void connection(AbstractCart cart) {
-        if (cart.getDirection().equals(getDirection())) {
-            setDeltaMovement(Vec3.ZERO);
-            cart.setDeltaMovement(Vec3.ZERO);
-            setIsClamping(true);
         } else {
             cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
         }
@@ -893,7 +929,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     public void cartSound(float distance, SoundEvent soundEvent) {
         Player player = level.getNearestPlayer(this, distance);
-        level.playSound(player, new BlockPos(position()), soundEvent, SoundSource.BLOCKS, 1.0F, 1.0F);
+        level.playSound(player, new BlockPos(position()), soundEvent, SoundSource.NEUTRAL, 1.0F, 1.0F);
     }
 
     public enum Type {

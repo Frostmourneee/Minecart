@@ -71,7 +71,7 @@ public abstract class AbstractCartItem extends Item {
             BaseRailBlock rail = (BaseRailBlock) blockstate.getBlock();
 
             if (!railIsRotating(rail.getRailDirection(blockstate, level, blockpos, null))) {
-                level.playSound(player, blockpos, ccSoundInit.CART_PUT.get(), SoundSource.BLOCKS,
+                level.playSound(player, blockpos, ccSoundInit.CART_PUT.get(), SoundSource.NEUTRAL,
                         1.0F - (float)player.position().subtract
                                 (new Vec3(blockpos.getX() + 0.5D, blockpos.getY(), blockpos.getZ() + 0.5D)).length() / 5.5F + 0.1F, 1.0F);
 

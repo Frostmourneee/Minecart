@@ -11,6 +11,6 @@ public class ccCommonModEvents {
 
     @SubscribeEvent
     public static void commonSetup(FMLCommonSetupEvent event) {
-        event.enqueueWork(PacketHandler::init);
+        //event.enqueueWork(PacketHandler::init);
     }
 }
