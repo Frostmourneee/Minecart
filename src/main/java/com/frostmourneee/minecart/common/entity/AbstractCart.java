@@ -51,9 +51,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_BACK_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_CLAMPING = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
-    public static final EntityDataAccessor<Integer> DATA_TICKS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
 
-    //public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
+    public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
 
     public Vec3 delta = Vec3.ZERO;
     public ArrayList<Integer> verticalMovementType = new ArrayList<>(); //1 = up; 0 = flat; -1 = down
@@ -83,7 +82,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //My code starts
         fieldsInitAndSidesSync();
-
+        if (this instanceof WagonEntity) customPrint(this, isClamping, entityData.get(DATA_IS_CLAMPING));
         restoreRelativeCarts();
         clampingToFrontCart();
         posCorrectionToFrontCart();
@@ -162,28 +161,28 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
 
         /*
-          Section devoted to carts' relationship restoring after rejoining to the game
+          Section devoted to carts' relationship and debugMode restoring after rejoining to the game
          */
         if (entityData.get(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN) && frontCart == null) {
-            entityData.set(DATA_TICKS, entityData.get(DATA_TICKS) + 1);
             isFindingFrontCartAfterRejoin = true;
         }
         if (entityData.get(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN) && backCart == null) {
-            entityData.set(DATA_TICKS, entityData.get(DATA_TICKS) + 1);
             isFindingBackCartAfterRejoin = true;
+        }
+        if (debugMode != entityData.get(DATA_DEBUG_MODE)) debugMode = entityData.get(DATA_DEBUG_MODE); //TODO remove
+
+        /*
+          Section for carts' isClamping restoring after rejoining to the game. If (field, data) == (true, false) then clamp process,
+          syncing is forbidden. If (field, data) == (false, true) then restore after rejoining, then sync.
+         */
+        if (isClamping != entityData.get(DATA_IS_CLAMPING) && !isClamping) {
+            isClamping = entityData.get(DATA_IS_CLAMPING);
         }
 
         /*
           Section for synchronizing server and client values of hasBack/FrontCart and debugMode.
           Should be after previous sections cause isCommonActing() can change
          */
-        //if (debugMode != entityData.get(DATA_DEBUG_MODE)) debugMode = entityData.get(DATA_DEBUG_MODE); //TODO remove
-        if (needSync && Minecraft.getInstance().level != null && Minecraft.getInstance().level.getEntity(getId()) != null) {
-            PacketHandler.INSTANCE.send(PacketDistributor.TRACKING_CHUNK.with(() ->
-                    level.getChunkAt(new BlockPos(position()))), new ClientboundCartUpdatePacket(getId()));
-            needSync = false;
-        }
-
         if (hasFrontCart != entityData.get(DATA_FRONTCART_EXISTS) && isCommonActing()) {
             setHasFrontCart(entityData.get(DATA_FRONTCART_EXISTS));
             if (!hasFrontCart) frontCart = null;
@@ -219,7 +218,6 @@ public abstract class AbstractCart extends AbstractMinecart {
                 cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
 
                 utilCart = null;
-                //omPrint(this, DATA_IS_CLAMPING, "voshel1");
                 setIsClamping(false);
             }
 
@@ -651,11 +649,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_BACKCART_EXISTS, false);
         entityData.define(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, false);
         entityData.define(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
-        entityData.define(DATA_TICKS, 0);
         entityData.define(DATA_IS_CLAMPING, false);
 
-
-        //entityData.define(DATA_DEBUG_MODE, false); //TODO remove
+        entityData.define(DATA_DEBUG_MODE, false); //TODO remove
     }
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
@@ -673,9 +669,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.readAdditionalSaveData(compoundTag);
 
-        //entityData.set(DATA_DEBUG_MODE, compoundTag.getBoolean("debug")); //TODO remove
-        debugMode = compoundTag.getBoolean("debug");
-        if (debugMode) needSync = true;
+        entityData.set(DATA_DEBUG_MODE, compoundTag.getBoolean("debug")); //TODO remove
 
         entityData.set(DATA_BACKCART_EXISTS, compoundTag.getBoolean("hasBackCart"));
         entityData.set(DATA_FRONTCART_EXISTS, compoundTag.getBoolean("hasFrontCart"));
@@ -685,7 +679,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     } //SERVER ONLY
 
     public void restoreRelativeCarts() {
-        if (entityData.get(DATA_TICKS) == 10) {
+        //Checks if cart entered the world on client side too
+        if (Minecraft.getInstance().level != null && Minecraft.getInstance().level.getEntity(getId()) != null) {
             if (backCart != null) isFindingBackCartAfterRejoin = false;
             if (frontCart != null) isFindingFrontCartAfterRejoin = false;
             if (backCart == null && isFindingBackCartAfterRejoin) {
@@ -707,8 +702,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
                     setIsFindingBackCartAfterRejoin(false);
                     backCart.setIsFindingFrontCartAfterRejoin(false);
-                    entityData.set(DATA_TICKS, 0);
-                    backCart.entityData.set(DATA_TICKS, 0);
                 }
             }
 
@@ -731,8 +724,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
                     setIsFindingFrontCartAfterRejoin(false);
                     frontCart.setIsFindingBackCartAfterRejoin(false);
-                    entityData.set(DATA_TICKS, 0);
-                    frontCart.entityData.set(DATA_TICKS, 0);
                 }
             }
         }
@@ -885,7 +876,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     public void setDebugMode(boolean bool) {
         debugMode = bool;
-        //entityData.set(DATA_DEBUG_MODE, bool);
+        entityData.set(DATA_DEBUG_MODE, bool);
     }
     public void setIsClamping(boolean bool) {
         isClamping = bool;
