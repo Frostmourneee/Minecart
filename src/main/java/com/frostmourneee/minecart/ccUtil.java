@@ -1,7 +1,13 @@
 package com.frostmourneee.minecart;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -37,6 +43,18 @@ public class ccUtil {
     }
     public static Vec3 blockPosToVec3 (BlockPos blockPos) {
         return new Vec3(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+    }
+    public static ArrayList<BlockPos> nearsBlockPos(BlockPos blockPos) {
+        ArrayList<BlockPos> tmp = new ArrayList<>();
+
+        tmp.add(blockPos.relative(Direction.UP));
+        tmp.add(blockPos.relative(Direction.EAST));
+        tmp.add(blockPos.relative(Direction.NORTH));
+        tmp.add(blockPos.relative(Direction.WEST));
+        tmp.add(blockPos.relative(Direction.SOUTH));
+        tmp.add(blockPos.relative(Direction.DOWN));
+
+        return tmp;
     }
     public static AABB getAABBBetweenBlocks(BlockPos pos1, BlockPos pos2) {
         if (pos1 != pos2) {
@@ -81,6 +99,16 @@ public class ccUtil {
         }
 
         return result;
+    }
+    public static void renderVisibleIndicator(BlockState blockState, PoseStack poseStack, MultiBufferSource buffer, int int4) {
+        poseStack.pushPose();
+        poseStack.scale(0.1F, 0.1F, 0.1F);
+        poseStack.translate(-0.5D, -0.5D, -0.5D);
+        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(blockState, poseStack, buffer, int4, OverlayTexture.NO_OVERLAY, net.minecraftforge.client.model.data.EmptyModelData.INSTANCE);
+        poseStack.popPose();
+    }
+    public static boolean railIsRotating(RailShape shape) {
+        return shape.equals(RailShape.NORTH_EAST) || shape.equals(RailShape.NORTH_WEST) || shape.equals(RailShape.SOUTH_EAST) || shape.equals(RailShape.SOUTH_WEST);
     }
 
     public static void customPrint(Object... str) {

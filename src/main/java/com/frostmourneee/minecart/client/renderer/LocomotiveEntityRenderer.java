@@ -21,7 +21,8 @@ import net.minecraft.world.level.block.state.BlockState;
 public class LocomotiveEntityRenderer extends AbstractCartRenderer {
 
     public static ResourceLocation TEXTURE = new ResourceLocation(minecart.MOD_ID, "textures/entities/locomotive.png");
-    public static ResourceLocation TEXTURE_DEBUG = new ResourceLocation(minecart.MOD_ID, "textures/entities/debug_wagon_red.png"); //TODO remove debug
+    public static ResourceLocation TEXTURE_DEBUG_GREEN = new ResourceLocation(minecart.MOD_ID, "textures/entities/debug_wagon_green.png"); //TODO remove debug
+    public static ResourceLocation TEXTURE_DEBUG_RED = new ResourceLocation(minecart.MOD_ID, "textures/entities/debug_wagon_red.png"); //TODO remove debug
 
     private final LocomotiveEntityModel model;
     private final DebugWagonModel debugModel; //TODO remove debug
@@ -56,7 +57,8 @@ public class LocomotiveEntityRenderer extends AbstractCartRenderer {
 
     @Override
     public ResourceLocation getTextureLocation(AbstractCart cart) {
-        return cart.debugMode ? TEXTURE_DEBUG : TEXTURE;
+        if (cart.debugMode) return cart.hasBackCart ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
+        else return TEXTURE;
     }
 
     public void furnace(AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {

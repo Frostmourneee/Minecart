@@ -1,10 +1,11 @@
 {
   "block.minecart.obsidian_new": "Cracked obsidian",
-  "item.minecart.locomotive": "Locomotive",
   "key.minecart.example_key": "Example Key",
-  "item.minecart.wagon": "Wagon",
-  "item.minecart.clamp": "Screwdriver",
   "key.minecart.example_key": "Test hotkey",
+  "item.minecart.wagon": "Wagon",
+  "item.minecart.locomotive": "Locomotive",
+  "item.minecart.clamp": "Screwdriver",
+  "item.minecart.debug_item": "Controller's baton",
   "entity.minecart.locomotive": "Lacamotive",
   "entity.minecart.wagon": "Wogon"
 }

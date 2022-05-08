@@ -1,6 +1,6 @@
 package com.frostmourneee.minecart.client.renderer;
 
-import com.frostmourneee.debugging_minecart.core.dmUtil;
+import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.common.entity.AbstractCart;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Vector3f;
@@ -118,7 +118,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
 
     public void debugMode (AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {
         if (cart.debugMode)
-            dmUtil.renderVisibleIndicator(Blocks.REDSTONE_BLOCK.defaultBlockState(), poseStack, buffer, int6);
+            ccUtil.renderVisibleIndicator(Blocks.REDSTONE_BLOCK.defaultBlockState(), poseStack, buffer, int6);
     }
 
     public void hurtAnim(AbstractCart cart, PoseStack poseStack, float float2) {

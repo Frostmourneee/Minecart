@@ -1,6 +1,5 @@
 package com.frostmourneee.minecart.common.entity;
 
-import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
 import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
@@ -29,6 +28,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 
+import static com.frostmourneee.minecart.ccUtil.nearsBlockPos;
+import static com.frostmourneee.minecart.ccUtil.railIsRotating;
 import static net.minecraft.world.level.block.HopperBlock.FACING;
 
 public class LocomotiveEntity extends AbstractCart {
@@ -95,9 +96,8 @@ public class LocomotiveEntity extends AbstractCart {
             zPush = getZ() - player.getZ();
         }
 
-        if (itemstack.getItem().equals(dmItemInit.DebugItem.get())) {
-            debugMode = !debugMode; //TODO remove
-            entityData.set(DATA_DEBUG_MODE, debugMode);
+        if (itemstack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
+            setDebugMode(!debugMode); //TODO remove
         }
 
         return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
@@ -207,7 +207,7 @@ public class LocomotiveEntity extends AbstractCart {
 
     @Override
     public boolean canBeCollidedWith() {
-        return hasBackCart && isAlive();
+        return isCollide() && isAlive();
     }
 
     @Override

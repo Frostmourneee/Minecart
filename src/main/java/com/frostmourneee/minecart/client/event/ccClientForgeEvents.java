@@ -27,4 +27,43 @@ public final class ccClientForgeEvents {
 
         }
     }
+
+    private static final String NBT_KEY = minecart.MOD_ID + ".first_joined";
+    @SubscribeEvent
+    public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
+        Player player = event.getPlayer();
+        if (player instanceof ServerPlayer) {
+
+            CompoundTag data = player.getPersistentData();
+            CompoundTag persistent;
+            if (!data.contains(Player.PERSISTED_NBT_TAG)) {
+                data.put(Player.PERSISTED_NBT_TAG, (persistent = new CompoundTag()));
+            } else {
+                persistent = data.getCompound(Player.PERSISTED_NBT_TAG);
+            }
+
+            if (!persistent.contains(NBT_KEY)) {
+                persistent.putBoolean(NBT_KEY, true);
+
+                ItemStack stack1 = new ItemStack(ccItemInit.LOCOMOTIVE_ITEM.get());
+                ItemStack stack2 = new ItemStack(Items.APPLE);
+                ItemStack stack3 = new ItemStack(Blocks.RAIL);
+                ItemStack stack4 = new ItemStack(ccItemInit.WAGON_ITEM.get());
+                ItemStack stack5 = new ItemStack(ccItemInit.CLAMP.get());
+                ItemStack stack6 = new ItemStack(ccItemInit.DEBUG_ITEM.get());
+                player.addItem(stack1);
+                player.addItem(stack2);
+                player.addItem(stack3);
+                player.addItem(stack4);
+                player.addItem(stack5);
+                player.addItem(stack6);
+
+                // message, fired when the player joins for the first time
+                player.sendMessage(new TextComponent(player.getDisplayName().getString() +  " joined the for the first time!"), player.getUUID());
+            } else {
+                // another message, fired when the player doesn't join for the first time
+                player.sendMessage(new TextComponent("Welcome back, " + player.getDisplayName().getString() + "!"), player.getUUID());
+            }
+        }
+    }
 }

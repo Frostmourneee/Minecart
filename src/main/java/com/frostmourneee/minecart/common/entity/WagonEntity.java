@@ -1,6 +1,5 @@
 package com.frostmourneee.minecart.common.entity;
 
-import com.frostmourneee.debugging_minecart.core.init.dmItemInit;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
@@ -20,6 +19,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
+import static com.frostmourneee.minecart.ccUtil.customPrint;
+
 public class WagonEntity extends AbstractCart {
 
     public WagonEntity(EntityType entityType, Level level) {
@@ -31,7 +32,6 @@ public class WagonEntity extends AbstractCart {
         super.tick();
 
         //===================== MY CODE STARTS ======================
-
     }
 
     @Override
@@ -40,10 +40,13 @@ public class WagonEntity extends AbstractCart {
         if (ret.consumesAction()) return ret;
         ItemStack itemStack = player.getItemInHand(hand);
 
-        if (itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
-            debugMode = !debugMode; //TODO remove
-            entityData.set(DATA_DEBUG_MODE, debugMode);
+        if (itemStack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
+            setDebugMode(!debugMode); //TODO remove
         }
+
+        if (itemStack.getItem().equals(ccItemInit.CLAMP.get()) && isClamping) {
+            return player.startRiding(this) ? InteractionResult.SUCCESS : InteractionResult.PASS;
+        } //Second click via clamp item when cart is clamping works just as clicking with no clamp item
 
         if (canBeClamped(itemStack)) {
             if (hasFrontCart) {
@@ -55,11 +58,11 @@ public class WagonEntity extends AbstractCart {
             }
         }
 
-        if (player.isSecondaryUseActive() && !itemStack.getItem().equals(ccItemInit.CLAMP.get()) && !itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
+        if (player.isSecondaryUseActive() && !itemStack.getItem().equals(ccItemInit.CLAMP.get()) && !itemStack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
             return InteractionResult.PASS;
         } else if (isVehicle()) {
             return InteractionResult.PASS;
-        } else if (!level.isClientSide && !itemStack.getItem().equals(ccItemInit.CLAMP.get()) && !itemStack.getItem().equals(dmItemInit.DebugItem.get())) {
+        } else if (!level.isClientSide && !itemStack.getItem().equals(ccItemInit.CLAMP.get()) && !itemStack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
             return player.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
         } else {
             return InteractionResult.SUCCESS;
@@ -101,7 +104,7 @@ public class WagonEntity extends AbstractCart {
 
     @Override
     public boolean canBeCollidedWith() {
-        return (hasBackCart || hasFrontCart) && isAlive();
+        return isCollide() && isAlive();
     }
 
     public void spawnAfterCartLeaving() {

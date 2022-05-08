@@ -1,5 +1,6 @@
 package com.frostmourneee.minecart.common.item;
 
+import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.common.entity.AbstractCart;
 import com.frostmourneee.minecart.common.entity.LocomotiveEntity;
 import com.frostmourneee.minecart.common.entity.WagonEntity;
@@ -25,7 +26,7 @@ import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.Vec3;
 
-import static com.frostmourneee.minecart.common.entity.AbstractCart.railIsRotating;
+import static com.frostmourneee.minecart.ccUtil.railIsRotating;
 
 public abstract class AbstractCartItem extends Item {
 

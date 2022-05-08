@@ -1,6 +1,7 @@
 package com.frostmourneee.minecart.core.init;
 
 import com.frostmourneee.minecart.common.item.ClampItem;
+import com.frostmourneee.minecart.common.item.DebugItem;
 import com.frostmourneee.minecart.common.item.LocomotiveItem;
 import com.frostmourneee.minecart.common.item.WagonItem;
 import com.frostmourneee.minecart.minecart;
@@ -26,4 +27,7 @@ public final class ccItemInit {
 
     public static final RegistryObject<ClampItem> CLAMP = ITEMS.register("clamp",
             () -> new ClampItem(new Item.Properties().tab(CreativeModeTab.TAB_TRANSPORTATION).stacksTo(1)));
+
+    public static final RegistryObject<DebugItem> DEBUG_ITEM = ITEMS.register("debug_item",
+            () -> new DebugItem(new Item.Properties().tab(CreativeModeTab.TAB_MISC).stacksTo(1)));
 }
