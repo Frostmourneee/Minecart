@@ -225,10 +225,18 @@ public abstract class AbstractCart extends AbstractMinecart {
                         return;
                     }
 
-                    if (distanceTo(nearestCart) > 1.65D && getDirection().equals(nearestCart.getDirection())) {
+                    if (distanceTo(nearestCart) > 2.0D) {
+                        setDeltaMovement(nearestCart.dirToVec3().scale(0.1D));
+                    } else if (distanceTo(nearestCart) > 1.85D && distanceTo(nearestCart) <= 2.0D) {
+                        setDeltaMovement(nearestCart.dirToVec3().scale(0.07D));
+                    } else if (distanceTo(nearestCart) > 1.75D && distanceTo(nearestCart) <= 1.85D) {
                         setDeltaMovement(nearestCart.dirToVec3().scale(0.05D));
+                    } else if (distanceTo(nearestCart) > 1.7D && distanceTo(nearestCart) <= 1.75D) {
+                        setDeltaMovement(nearestCart.dirToVec3().scale(0.03D));
+                    } else if (distanceTo(nearestCart) > 1.65D && distanceTo(nearestCart) <= 1.7D) {
+                        setDeltaMovement(nearestCart.dirToVec3().scale(0.02D));
                     }
-                    if (distanceTo(nearestCart) >= 1.625D && distanceTo(nearestCart) <= 1.65D && getDirection().equals(nearestCart.getDirection())
+                    if (distanceTo(nearestCart) >= 1.625D && distanceTo(nearestCart) <= 1.65D
                         || distanceTo(nearestCart) < 1.625D) {
                         setDeltaMovement(Vec3.ZERO);
                         nearestCart.connectBack(this);
