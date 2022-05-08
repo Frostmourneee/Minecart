@@ -47,6 +47,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_BACK_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Integer> DATA_TICKS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Boolean> DATA_IS_CLAMPING = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
@@ -159,8 +160,14 @@ public abstract class AbstractCart extends AbstractMinecart {
         /*
           Section devoted to carts' relationship restoring after rejoining to the game
          */
-        if (entityData.get(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN) && frontCart == null) isFindingFrontCartAfterRejoin = true;
-        if (entityData.get(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN) && backCart == null) isFindingBackCartAfterRejoin = true;
+        if (entityData.get(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN) && frontCart == null) {
+            entityData.set(DATA_TICKS, entityData.get(DATA_TICKS) + 1);
+            isFindingFrontCartAfterRejoin = true;
+        }
+        if (entityData.get(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN) && backCart == null) {
+            entityData.set(DATA_TICKS, entityData.get(DATA_TICKS) + 1);
+            isFindingBackCartAfterRejoin = true;
+        }
 
         /*
           Section for synchronizing server and client values of hasBack/FrontCart and debugMode.
@@ -203,6 +210,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
 
                 utilCart = null;
+                //omPrint(this, DATA_IS_CLAMPING, "voshel1");
                 setIsClamping(false);
             }
 
@@ -213,7 +221,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 cart.setPos(cart.frontCart.position().add(oppDirToVec3().scale(1.625D)));
             }
         }
-    }
+    } //WORKS ONLY WITHOUT REJOIN
     public boolean isCommonActing() {
         return !isFindingFrontCartAfterRejoin && !isFindingBackCartAfterRejoin && !isClamping;
     }
@@ -634,6 +642,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_BACKCART_EXISTS, false);
         entityData.define(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, false);
         entityData.define(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
+        entityData.define(DATA_TICKS, 0);
         entityData.define(DATA_IS_CLAMPING, false);
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
@@ -664,49 +673,55 @@ public abstract class AbstractCart extends AbstractMinecart {
     } //SERVER ONLY
 
     public void restoreRelativeCarts() {
-        if (backCart != null) isFindingBackCartAfterRejoin = false;
-        if (frontCart != null) isFindingFrontCartAfterRejoin = false;
-        if (backCart == null && isFindingBackCartAfterRejoin) {
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
-                    getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection().getOpposite()).relative(getDirection().getClockWise()),
-                    new BlockPos(position()).relative(getDirection().getOpposite(), 2).relative(getDirection().getCounterClockWise()))
-            );
+        if (entityData.get(DATA_TICKS) == 10) {
+            if (backCart != null) isFindingBackCartAfterRejoin = false;
+            if (frontCart != null) isFindingFrontCartAfterRejoin = false;
+            if (backCart == null && isFindingBackCartAfterRejoin) {
+                ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
+                        getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection().getOpposite()).relative(getDirection().getClockWise()),
+                                new BlockPos(position()).relative(getDirection().getOpposite(), 2).relative(getDirection().getCounterClockWise()))
+                );
 
-            rangeCart.removeIf(cart -> cart == this);
-            if (!rangeCart.isEmpty()) {
-                for (int i = 1; i < rangeCart.size(); i++) { //SEARCHING FOR THE NEAREST
-                    if (rangeCart.get(i).distanceTo(this) < rangeCart.get(0).distanceTo(this)) {
-                        rangeCart.set(0, rangeCart.get(i));
+                rangeCart.removeIf(cart -> cart == this);
+                if (!rangeCart.isEmpty()) {
+                    for (int i = 1; i < rangeCart.size(); i++) { //SEARCHING FOR THE NEAREST
+                        if (rangeCart.get(i).distanceTo(this) < rangeCart.get(0).distanceTo(this)) {
+                            rangeCart.set(0, rangeCart.get(i));
+                        }
                     }
-                }
-                AbstractCart backCart = rangeCart.get(0);
-                backCart.connectFront(this);
-                connectBack(backCart);
+                    AbstractCart backCart = rangeCart.get(0);
+                    backCart.connectFront(this);
+                    connectBack(backCart);
 
-                //isFindingBackCartAfterRejoin = false;
-                setIsFindingFrontCartAfterRejoin(false);
+                    setIsFindingBackCartAfterRejoin(false);
+                    backCart.setIsFindingFrontCartAfterRejoin(false);
+                    entityData.set(DATA_TICKS, 0);
+                    backCart.entityData.set(DATA_TICKS, 0);
+                }
             }
-        }
 
-        if (frontCart == null && isFindingFrontCartAfterRejoin) {
-            ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
-                    getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()).relative(getDirection().getClockWise()),
-                    new BlockPos(position()).relative(getDirection(), 2).relative(getDirection().getCounterClockWise()))
-            );
+            if (frontCart == null && isFindingFrontCartAfterRejoin) {
+                ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class,
+                        getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()).relative(getDirection().getClockWise()),
+                                new BlockPos(position()).relative(getDirection(), 2).relative(getDirection().getCounterClockWise()))
+                );
 
-            rangeCart.removeIf(cart -> cart == this);
-            if (!rangeCart.isEmpty()) {
-                for (int i = 1; i < rangeCart.size(); i++) { //SEARCHING FOR THE NEAREST
-                    if (rangeCart.get(i).distanceTo(this) < rangeCart.get(0).distanceTo(this)) {
-                        rangeCart.set(0, rangeCart.get(i));
+                rangeCart.removeIf(cart -> cart == this);
+                if (!rangeCart.isEmpty()) {
+                    for (int i = 1; i < rangeCart.size(); i++) { //SEARCHING FOR THE NEAREST
+                        if (rangeCart.get(i).distanceTo(this) < rangeCart.get(0).distanceTo(this)) {
+                            rangeCart.set(0, rangeCart.get(i));
+                        }
                     }
-                }
-                AbstractCart frontCart = rangeCart.get(0);
-                frontCart.connectBack(this);
-                connectFront(frontCart);
+                    AbstractCart frontCart = rangeCart.get(0);
+                    frontCart.connectBack(this);
+                    connectFront(frontCart);
 
-                //isFindingFrontCartAfterRejoin = false;
-                setIsFindingBackCartAfterRejoin(false);
+                    setIsFindingFrontCartAfterRejoin(false);
+                    frontCart.setIsFindingBackCartAfterRejoin(false);
+                    entityData.set(DATA_TICKS, 0);
+                    frontCart.entityData.set(DATA_TICKS, 0);
+                }
             }
         }
     }
@@ -865,13 +880,17 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.set(DATA_IS_CLAMPING, bool);
     }
 
-    public void cartSound(float distance, SoundEvent soundEvent) {
+    public void cartSoundPrevious(float distance, SoundEvent soundEvent) {
         Player player = level.getNearestPlayer(this, distance);
 
         if (player != null) level.playSound(player, new BlockPos(position()),
-                soundEvent, SoundSource.BLOCKS, 1.0F - distanceTo(player) / distance + 0.1F, 1.0F);
+                soundEvent, SoundSource.BLOCKS, 1.0F, 1.0F);
         else if (distance == 0.0F) level.playSound(null, new BlockPos(position()),
                 soundEvent, SoundSource.BLOCKS, 1.0F, 1.0F);
+    }
+    public void cartSound(float distance, SoundEvent soundEvent) {
+        Player player = level.getNearestPlayer(this, distance);
+        level.playSound(player, new BlockPos(position()), soundEvent, SoundSource.BLOCKS, 1.0F, 1.0F);
     }
 
     public enum Type {
