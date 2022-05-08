@@ -1,23 +1,22 @@
 package com.frostmourneee.minecart.core.network;
 
-import com.frostmourneee.minecart.common.entity.AbstractCart;
-import net.minecraft.core.BlockPos;
+import com.frostmourneee.minecart.client.ccClientAccess;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.phys.AABB;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
-public class ServerboundAbstractCartUpdatePacket {
+public class ClientboundCartUpdatePacket {
     public final int cartId;
 
-    public ServerboundAbstractCartUpdatePacket(int id) {
+    public ClientboundCartUpdatePacket(int id) {
         cartId = id;
     }
 
-    public ServerboundAbstractCartUpdatePacket(FriendlyByteBuf buffer) {
+    public ClientboundCartUpdatePacket(FriendlyByteBuf buffer) {
         this(buffer.readInt());
     }
 
@@ -28,12 +27,7 @@ public class ServerboundAbstractCartUpdatePacket {
     public boolean handle(Supplier<NetworkEvent.Context> ctx) {
         final var success = new AtomicBoolean(false);
         ctx.get().enqueueWork(() -> {
-            final AbstractCart absCart;
-            if (ctx.get().getSender().level.getEntity(cartId) instanceof AbstractCart cart) {
-                cart.isClamping = true;
-
-                success.set(true);
-            } //LOGIC HERE
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> success.set(ccClientAccess.cartDebugModeUpdated(cartId)));
         });
 
         ctx.get().setPacketHandled(true);

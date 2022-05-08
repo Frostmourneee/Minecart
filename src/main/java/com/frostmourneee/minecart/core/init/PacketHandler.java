@@ -1,6 +1,7 @@
 package com.frostmourneee.minecart.core.init;
 
-import com.frostmourneee.minecart.core.network.ServerboundAbstractCartUpdatePacket;
+import com.frostmourneee.minecart.core.network.ClientboundCartUpdatePacket;
+import com.frostmourneee.minecart.core.network.ServerboundCartUpdatePacket;
 import com.frostmourneee.minecart.minecart;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkDirection;
@@ -16,8 +17,11 @@ public final class PacketHandler {
 
     public static void init() {
         int index = 0;
-        INSTANCE.messageBuilder(ServerboundAbstractCartUpdatePacket.class, index++, NetworkDirection.PLAY_TO_SERVER).encoder(ServerboundAbstractCartUpdatePacket::encode)
-                .decoder(ServerboundAbstractCartUpdatePacket::new).consumer(ServerboundAbstractCartUpdatePacket::handle)
+        INSTANCE.messageBuilder(ServerboundCartUpdatePacket.class, index++, NetworkDirection.PLAY_TO_SERVER).encoder(ServerboundCartUpdatePacket::encode)
+                .decoder(ServerboundCartUpdatePacket::new).consumer(ServerboundCartUpdatePacket::handle)
+                .add();
+        INSTANCE.messageBuilder(ClientboundCartUpdatePacket.class, index++, NetworkDirection.PLAY_TO_CLIENT).encoder(ClientboundCartUpdatePacket::encode)
+                .decoder(ClientboundCartUpdatePacket::new).consumer(ClientboundCartUpdatePacket::handle)
                 .add();
     }
 }
