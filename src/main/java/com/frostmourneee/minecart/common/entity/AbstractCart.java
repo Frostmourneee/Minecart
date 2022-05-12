@@ -46,7 +46,6 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_BACK_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
-    //public static final EntityDataAccessor<Boolean> DATA_IS_CLAMPING = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
 
@@ -74,7 +73,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //My code starts
         fieldsInitAndSidesSync();
-        if (this instanceof WagonEntity) customPrint(this, isClamping);
+
         restoreRelativeCarts();
         clampingToFrontCart();
         posCorrectionToFrontCart();
@@ -149,13 +148,6 @@ public abstract class AbstractCart extends AbstractMinecart {
          */
         delta = position().subtract(xOld, yOld, zOld);
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
-        /*
-          Section for carts' isClamping restoring after rejoining to the game. If (field, data) == (true, false) then clamp process,
-          syncing is forbidden. If (field, data) == (false, true) then restore after rejoining, then sync.
-         */
-        /*if (isClamping != entityData.get(DATA_IS_CLAMPING) && !isClamping) {
-            isClamping = entityData.get(DATA_IS_CLAMPING);
-        }*/
     }
     public void clampingToFrontCart() {
         if (isClamping) {
@@ -411,7 +403,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 setPos(frontCart.position().add(frontCart.oppDirToVec3().add(0.0D, 1.0D, 0.0D).scale(1.149D)));
             }
             if (isOnHorizontalLine()) {
-                setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
+                //setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
             }
         }
     }
@@ -652,38 +644,46 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_BACKCART_EXISTS, false);
         entityData.define(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, false);
         entityData.define(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
-        //entityData.define(DATA_IS_CLAMPING, false);
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
     }
     @Override
     public void onSyncedDataUpdated(@NotNull EntityDataAccessor<?> data) {
         if (DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN.equals(data)) {
-            this.isFindingFrontCartAfterRejoin = (boolean)entityData.get(data);
+            isFindingFrontCartAfterRejoin = (boolean)entityData.get(data);
         }
         if (DATA_IS_FINDING_BACK_CART_AFTER_REJOIN.equals(data)) {
-            this.isFindingBackCartAfterRejoin = (boolean)entityData.get(data);
+            isFindingBackCartAfterRejoin = (boolean)entityData.get(data);
         }
 
         if (DATA_BACKCART_EXISTS.equals(data) && isCommonActing()) {
-            if ((boolean)entityData.get(data)) {
-
-            } else {
+            if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side
+                AbstractCart backCart = findingNearestCartInArea(getAABBBetweenBlocks(
+                        new BlockPos(position()).relative(getDirection().getOpposite()).relative(getDirection().getClockWise()),
+                        new BlockPos(position()).relative(getDirection().getOpposite(), 2).relative(getDirection().getCounterClockWise()))
+                );
+                connectBack(backCart);
+            } else { //Called after death() method
                 hasBackCart = false;
                 backCart = null;
             }
         }
         if (DATA_FRONTCART_EXISTS.equals(data) && isCommonActing()) {
-            if ((boolean)entityData.get(data)) {
-
-            } else {
+            if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side
+                AbstractCart frontCart = findingNearestCartInArea(getAABBBetweenBlocks(
+                        new BlockPos(position()).relative(getDirection()).relative(getDirection().getClockWise()),
+                        new BlockPos(position()).relative(getDirection(), 2).relative(getDirection().getCounterClockWise()))
+                );
+                connectBack(frontCart);
+            } else { //Called after death() method
                 hasFrontCart = false;
                 frontCart = null;
             }
         }
+
         if (DATA_DEBUG_MODE.equals(data)) {
             this.debugMode = (boolean)entityData.get(data);
-        }
+        } //TODO remove debug
 
         super.onSyncedDataUpdated(data);
     }
@@ -696,7 +696,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         compoundTag.putBoolean("isFindingBackCartAfterRejoin", hasBackCart);
         compoundTag.putBoolean("isFindingFrontCartAfterRejoin", hasFrontCart);
         if (isClamping) setDeltaMovement(getDeltaMovement().scale(0.2D));
-        //compoundTag.putBoolean("isClamping", isClamping);
 
         compoundTag.putBoolean("debug", debugMode); //TODO remove
     } //SERVER ONLY
@@ -710,7 +709,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.set(DATA_FRONTCART_EXISTS, compoundTag.getBoolean("hasFrontCart"));
         entityData.set(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, compoundTag.getBoolean("isFindingBackCartAfterRejoin"));
         entityData.set(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, compoundTag.getBoolean("isFindingFrontCartAfterRejoin"));
-        //entityData.set(DATA_IS_CLAMPING, compoundTag.getBoolean("isClamping"));
     } //SERVER ONLY
 
     public void restoreRelativeCarts() {
