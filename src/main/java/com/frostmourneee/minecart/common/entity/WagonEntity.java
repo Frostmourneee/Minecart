@@ -19,8 +19,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
-import static com.frostmourneee.minecart.ccUtil.customPrint;
-
 public class WagonEntity extends AbstractCart {
 
     public WagonEntity(EntityType entityType, Level level) {
@@ -41,7 +39,7 @@ public class WagonEntity extends AbstractCart {
         ItemStack itemStack = player.getItemInHand(hand);
 
         if (itemStack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
-            setDebugMode(!debugMode); //TODO remove
+            debugMode = !debugMode; //TODO remove
         }
 
         if (itemStack.getItem().equals(ccItemInit.CLAMP.get()) && isClamping) {
@@ -81,22 +79,14 @@ public class WagonEntity extends AbstractCart {
         return 0.3f;
     } //TODO change
     @Override
-    public void moveMinecartOnRail(BlockPos pos) {
-        AbstractMinecart mc = this;
-        double d24 = mc.isVehicle() ? 0.75D : 1.0D;
-        double d25 = mc.getMaxSpeedWithRail();
-        Vec3 vec3d1 = mc.getDeltaMovement();
-
-        mc.move(MoverType.SELF, new Vec3(Mth.clamp(d24 * vec3d1.x, -d25, d25), 0.0D, Mth.clamp(d24 * vec3d1.z, -d25, d25)));
-    }
-    @Override
     public void setDeltaMovement(@NotNull Vec3 vec) {
         if (hasFrontCart) {
             double dist = frontCart.position().subtract(position()).length();
 
             if (frontCart.zeroDelta()) deltaMovement = Vec3.ZERO;
-            else if (dist >= 1.625D)
+            //else if (dist >= 1.625D) {
                 deltaMovement = frontCart.deltaMovement;
+            //}
         } else deltaMovement = vec;
 
         if (deltaMovement.length() < 1.0E-4) deltaMovement = Vec3.ZERO;
