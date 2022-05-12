@@ -26,6 +26,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 
 import static com.frostmourneee.minecart.ccUtil.nearsBlockPos;
@@ -45,7 +47,7 @@ public class LocomotiveEntity extends AbstractCart {
     public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
-    public static final int FUEL_ADD_BY_CLICK = 18; //TODO change
+    public static final int FUEL_ADD_BY_CLICK = 180; //TODO change
 
     @Override
     public void tick() {
@@ -97,7 +99,7 @@ public class LocomotiveEntity extends AbstractCart {
         }
 
         if (itemstack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
-            setDebugMode(!debugMode); //TODO remove
+            debugMode = !debugMode; //TODO remove
         }
 
         return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
@@ -252,7 +254,7 @@ public class LocomotiveEntity extends AbstractCart {
         entityData.define(DATA_ID_FUEL, false);
     }
     @Override
-    protected void addAdditionalSaveData(CompoundTag compoundTag) {
+    protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.addAdditionalSaveData(compoundTag);
 
         compoundTag.putDouble("PushX", xPush);
