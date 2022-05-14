@@ -4,7 +4,6 @@ import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.*;
@@ -39,7 +38,7 @@ public class WagonEntity extends AbstractCart {
         ItemStack itemStack = player.getItemInHand(hand);
 
         if (itemStack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
-            debugMode = !debugMode; //TODO remove
+            setDebugMode(!debugMode); //TODO remove
         }
 
         if (itemStack.getItem().equals(ccItemInit.CLAMP.get()) && isClamping) {
@@ -85,7 +84,7 @@ public class WagonEntity extends AbstractCart {
 
             if (frontCart.zeroDelta()) deltaMovement = Vec3.ZERO;
             //else if (dist >= 1.625D) {
-                deltaMovement = frontCart.deltaMovement;
+            else deltaMovement = frontCart.deltaMovement;
             //}
         } else deltaMovement = vec;
 
@@ -94,7 +93,7 @@ public class WagonEntity extends AbstractCart {
 
     @Override
     public boolean canBeCollidedWith() {
-        return isCollide() && isAlive();
+        return isInClamp() && isAlive();
     }
 
     public void spawnAfterCartLeaving() {

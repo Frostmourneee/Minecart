@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FurnaceBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.NotNull;
 
 public class LocomotiveEntityRenderer extends AbstractCartRenderer {
 
@@ -35,7 +36,7 @@ public class LocomotiveEntityRenderer extends AbstractCartRenderer {
     }
 
     @Override
-    public void render(AbstractCart cart, float float1, float float2, PoseStack poseStack, MultiBufferSource buffer, int int6) {
+    public void render(@NotNull AbstractCart cart, float float1, float float2, @NotNull PoseStack poseStack, @NotNull MultiBufferSource buffer, int int6) {
         super.render(cart, float1, float2, poseStack, buffer, int6);
 
         furnace(cart, poseStack, buffer, int6);
@@ -56,7 +57,7 @@ public class LocomotiveEntityRenderer extends AbstractCartRenderer {
     }
 
     @Override
-    public ResourceLocation getTextureLocation(AbstractCart cart) {
+    public @NotNull ResourceLocation getTextureLocation(@NotNull AbstractCart cart) {
         if (cart.debugMode) return cart.hasBackCart ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
         else return TEXTURE;
     }

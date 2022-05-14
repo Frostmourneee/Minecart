@@ -2,6 +2,7 @@ package com.frostmourneee.minecart.client.renderer;
 
 import com.frostmourneee.minecart.ccUtil;
 import com.frostmourneee.minecart.common.entity.AbstractCart;
+import com.frostmourneee.minecart.common.entity.WagonEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Vector3f;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -13,6 +14,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
+import static com.frostmourneee.minecart.ccUtil.customPrint;
+
+//Renderer class don't work when player doesn't look on the cart
 public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> {
 
     public AbstractCartRenderer(EntityRendererProvider.Context context) {
@@ -22,7 +26,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
     }
 
     @Override
-    public void render(AbstractCart cart, float float1, float float2, @NotNull PoseStack poseStack, @NotNull MultiBufferSource buffer, int int6) {
+    public void render(@NotNull AbstractCart cart, float float1, float float2, @NotNull PoseStack poseStack, @NotNull MultiBufferSource buffer, int int6) {
         super.render(cart, float1, float2, poseStack, buffer, int6);
 
         debugMode(cart, poseStack, buffer, int6); //TODO remove debug
@@ -136,5 +140,5 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
     public abstract void buffering(AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6);
 
     @Override
-    public abstract ResourceLocation getTextureLocation(AbstractCart cart);
+    public abstract @NotNull ResourceLocation getTextureLocation(@NotNull AbstractCart cart);
 }

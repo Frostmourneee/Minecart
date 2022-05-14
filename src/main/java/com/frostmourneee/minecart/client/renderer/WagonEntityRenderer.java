@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 
 public class WagonEntityRenderer extends AbstractCartRenderer {
 
@@ -29,7 +30,7 @@ public class WagonEntityRenderer extends AbstractCartRenderer {
     }
 
     @Override
-    public void render(AbstractCart cart, float float1, float float2, PoseStack poseStack, MultiBufferSource buffer, int int6) {
+    public void render(@NotNull AbstractCart cart, float float1, float float2, @NotNull PoseStack poseStack, @NotNull MultiBufferSource buffer, int int6) {
         super.render(cart, float1, float2, poseStack, buffer, int6);
 
         buffering(cart, poseStack, buffer, int6);
@@ -49,7 +50,7 @@ public class WagonEntityRenderer extends AbstractCartRenderer {
     }
 
     @Override
-    public ResourceLocation getTextureLocation(AbstractCart cart) {
+    public @NotNull ResourceLocation getTextureLocation(@NotNull AbstractCart cart) {
         if (cart.debugMode) {
             return cart.hasFrontCart ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
         } else return cart.hasFrontCart ? TEXTURE_GREEN : TEXTURE_RED;

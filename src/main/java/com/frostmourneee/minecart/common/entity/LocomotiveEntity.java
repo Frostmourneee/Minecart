@@ -30,8 +30,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
-import static com.frostmourneee.minecart.ccUtil.nearsBlockPos;
-import static com.frostmourneee.minecart.ccUtil.railIsRotating;
+import static com.frostmourneee.minecart.ccUtil.*;
 import static net.minecraft.world.level.block.HopperBlock.FACING;
 
 public class LocomotiveEntity extends AbstractCart {
@@ -94,12 +93,12 @@ public class LocomotiveEntity extends AbstractCart {
         }
 
         if (fuel > 0) {
-            xPush = getX() - player.getX();
-            zPush = getZ() - player.getZ();
+            xPush = hasBackCart ? position().subtract(backCart.position()).x : getX() - player.getX();
+            zPush = hasBackCart ? position().subtract(backCart.position()).z : getZ() - player.getZ();
         }
 
         if (itemstack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
-            debugMode = !debugMode; //TODO remove
+            setDebugMode(!debugMode); //TODO remove
         }
 
         return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
@@ -209,7 +208,7 @@ public class LocomotiveEntity extends AbstractCart {
 
     @Override
     public boolean canBeCollidedWith() {
-        return isCollide() && isAlive();
+        return isInClamp() && isAlive();
     }
 
     @Override
@@ -227,7 +226,7 @@ public class LocomotiveEntity extends AbstractCart {
         return 0.3f;
     } //TODO change
     @Override
-    protected void applyNaturalSlowdown() {
+    protected void applyNaturalSlowdown() { //STRANGE BUT WITHOUT THIS METHOD LOCOMOTIVE CAN'T START MOVING
         double d0 = xPush * xPush + zPush * zPush;
         if (d0 > 1.0E-7D) {
             d0 = Math.sqrt(d0);
