@@ -69,7 +69,7 @@ public class LocomotiveEntityRenderer extends AbstractCartRenderer {
             poseStack.pushPose();
             poseStack.scale(0.75F, 0.75F, 0.75F);
             poseStack.translate(-0.5D, (double)((float)(j - 8) / 16.0F) + 1.0D / 8.0D, -0.5D);
-            poseStack.translate(0.0D, 0.375D, 0.0D);
+            poseStack.translate(0.0D, -0.125D, 0.0D);
             renderFurnace(Blocks.FURNACE.defaultBlockState()
                     .setValue(FurnaceBlock.FACING, Direction.EAST)
                     .setValue(FurnaceBlock.LIT, ((LocomotiveEntity)cart).hasFuel()), poseStack, buffer, int6);

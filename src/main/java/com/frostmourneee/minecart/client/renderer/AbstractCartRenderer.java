@@ -14,8 +14,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
-import static com.frostmourneee.minecart.ccUtil.customPrint;
-
 //Renderer class don't work when player doesn't look on the cart
 public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> {
 
@@ -38,15 +36,9 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
 
     public void vertRotation(AbstractCart cart, PoseStack poseStack, float vertAngle) {
         if (cart.alpha.get(cart.alpha.size() - 1) == -90.0F) {
-            if (vertAngle < -2.0F) poseStack.translate(0.0D, 0.15D, 0.23D);
-            else if (vertAngle > 2.0F) poseStack.translate(0.0D,0.15D, -0.23D);
-
             poseStack.mulPose(Vector3f.XP.rotationDegrees(vertAngle));
         }
         else if (cart.alpha.get(cart.alpha.size() - 1) == 180.0F) {
-            if (vertAngle < -2.0F) poseStack.translate(0.23D, 0.15D, 0.0D);
-            else if (vertAngle > 2.0F) poseStack.translate(-0.23D, 0.15D, 0.0D);
-
             poseStack.mulPose(Vector3f.ZP.rotationDegrees(-vertAngle));
         }
     }
@@ -117,6 +109,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
             }
         }
 
+        poseStack.translate(0.0D, 0.375D, 0.0D);
         vertRotation(cart, poseStack, cart.vertAngle);
     }
 
