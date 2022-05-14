@@ -72,7 +72,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //My code starts
         fieldsInitAndSidesSync();
-        if (this instanceof WagonEntity) customPrint(this, isSlowingOrAcceleratingOnPlaneWithLocomotive());
+
         restoreRelativeCarts();
         clampingToFrontCart();
         posCorrectionToFrontCart();
@@ -225,6 +225,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     public boolean isSlowingOrAcceleratingOnPlaneWithLocomotive() {
         if (getLocomotive() == null) return false;
+
         return Math.abs(frontCart.deltaMovement.horizontalDistance()) < 2.0D && !frontCart.zeroDeltaHorizontal();
     }
     public void clampingFail() {
@@ -369,12 +370,12 @@ public abstract class AbstractCart extends AbstractMinecart {
             setDeltaMovement(Vec3.ZERO);
             isClamping = false;
         }
-        if (!hasBackCart && !hasFrontCart) {
+        if (!isClamped()) {
             this.setDeltaMovement(this.getDeltaMovement().add(d1, d2, d3));
             this.hasImpulse = true;
         }
     }
-    public boolean isInClamp() {
+    public boolean isClamped() {
         return hasFrontCart || hasBackCart;
     }
 
@@ -518,7 +519,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     @Override
     public void moveMinecartOnRail(BlockPos pos) { //Non-default because getMaximumSpeed is protected
         AbstractMinecart mc = this;
-        double d24 = mc.isVehicle() && !isInClamp() ? 0.75D : 1.0D;
+        double d24 = mc.isVehicle() && !isClamped() ? 0.75D : 1.0D;
         double d25 = mc.getMaxSpeedWithRail();
         Vec3 vec3d1 = mc.getDeltaMovement();
         mc.move(MoverType.SELF, new Vec3(Mth.clamp(d24 * vec3d1.x, -d25, d25), 0.0D, Mth.clamp(d24 * vec3d1.z, -d25, d25)));

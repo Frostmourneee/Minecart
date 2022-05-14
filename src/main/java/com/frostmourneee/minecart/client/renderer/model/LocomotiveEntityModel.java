@@ -39,9 +39,9 @@ public class LocomotiveEntityModel<T extends LocomotiveEntity> extends EntityMod
 		.texOffs(21, 20).addBox(-7.0F, -10.0F, -9.0F, 14.0F, 9.0F, 1.0F, new CubeDeformation(0.0F))
 		.texOffs(0, 49).addBox(-7.0F, -10.0F, -8.0F, 1.0F, 9.0F, 16.0F, new CubeDeformation(0.0F))
 		.texOffs(44, 48).addBox(6.0F, -10.0F, -8.0F, 1.0F, 9.0F, 16.0F, new CubeDeformation(0.0F))
-		.texOffs(3, 1).addBox(-6.0F, -2.0F, -8.0F, 12.0F, 1.0F, 16.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 1.0F, 0.0F, 0.0F, 1.5708F, -3.1416F));
+		.texOffs(3, 1).addBox(-6.0F, -2.0F, -8.0F, 12.0F, 1.0F, 16.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, -5.0F, 0.0F, 0.0F, 1.5708F, -3.1416F));
 
-		PartDefinition chimney = partdefinition.addOrReplaceChild("chimney", CubeListBuilder.create(), PartPose.offsetAndRotation(0.0F, 1.0F, 0.0F, 0.0F, 1.5708F, -3.1416F));
+		PartDefinition chimney = partdefinition.addOrReplaceChild("chimney", CubeListBuilder.create(), PartPose.offsetAndRotation(0.0F, -8.5F, 0.0F, 0.0F, 1.5708F, -3.1416F));
 
 		PartDefinition chimneyHead = chimney.addOrReplaceChild("chimneyHead", CubeListBuilder.create(), PartPose.offset(1.0F, -1.0F, 1.0F));
 
@@ -61,12 +61,12 @@ public class LocomotiveEntityModel<T extends LocomotiveEntity> extends EntityMod
 		.texOffs(8, 0).addBox(0.0F, -22.0F, -1.0F, 1.0F, 1.0F, 3.0F, new CubeDeformation(0.0F))
 		.texOffs(13, 25).addBox(1.0F, -22.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
 		.texOffs(0, 20).addBox(1.0F, -22.0F, 1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
-		.texOffs(95, 79).addBox(0.0F, -15.0F, -1.0F, 3.0F, 1.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(1.0F, -1.0F, 2.0F));
+		.texOffs(95, 79).addBox(0.0F, -15.0F, -1.0F, 3.0F, 1.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(1.0F, -5.0F, 2.0F));
 
 		PartDefinition hole = partdefinition.addOrReplaceChild("hole", CubeListBuilder.create().texOffs(0, 76).addBox(-2.0F, -4.0F, 10.0F, 4.0F, 3.0F, 1.0F, new CubeDeformation(0.0F))
 		.texOffs(11, 76).addBox(-2.0F, -3.0F, 11.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F))
 		.texOffs(11, 80).addBox(1.0F, -3.0F, 11.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F))
-		.texOffs(0, 86).addBox(-2.0F, -3.0F, 13.0F, 4.0F, 1.0F, 1.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 1.0F, 0.0F, 0.0F, 1.5708F, -3.1416F));
+		.texOffs(0, 86).addBox(-2.0F, -3.0F, 13.0F, 4.0F, 1.0F, 1.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, -5.0F, 0.0F, 0.0F, 1.5708F, -3.1416F));
 
 		return LayerDefinition.create(meshdefinition, 128, 128);
 	}

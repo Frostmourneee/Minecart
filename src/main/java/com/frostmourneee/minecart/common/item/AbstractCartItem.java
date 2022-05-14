@@ -82,20 +82,21 @@ public abstract class AbstractCartItem extends Item {
                         case LOCOMOTIVE -> cart = new LocomotiveEntity(ccEntityInit.LOCOMOTIVE_ENTITY.get(), level);
                     }
 
-                    cart.setPos(blockpos.getX() + 0.5D, blockpos.getY(), blockpos.getZ() + 0.5D);
+                    RailShape railshape = rail.getRailDirection(blockstate, level, blockpos, null);
+                    double d0 = 0.0D;
+                    if (railshape.isAscending()) {
+                        d0 = 0.5D;
+                    }
 
-                    if (rail.getRailDirection(blockstate, level, blockpos, null).equals(RailShape.NORTH_SOUTH)) {
-                        if (context.getPlayer().getZ() > cart.getZ()) {
-                            cart.setYRot(180.0F);
-                        } else {
-                            cart.setYRot(0.0F);
-                        }
-                    } else {
-                        if (context.getPlayer().getX() > cart.getX()) {
-                            cart.setYRot(90.0F);
-                        } else {
-                            cart.setYRot(270.0F);
-                        }
+                    cart.setPos(blockpos.getX() + 0.5D, blockpos.getY() + 0.0625D + d0, blockpos.getZ() + 0.5D);
+
+                    switch (railshape) {
+                        case NORTH_SOUTH -> cart.setYRot(context.getPlayer().getZ() > cart.getZ() ? 180.0F : 0.0F);
+                        case EAST_WEST -> cart.setYRot(context.getPlayer().getX() > cart.getX() ? 90.0F : 270.0F);
+                        case ASCENDING_EAST -> cart.setYRot(90.0F);
+                        case ASCENDING_NORTH -> cart.setYRot(0.0F);
+                        case ASCENDING_WEST -> cart.setYRot(270.0F);
+                        case ASCENDING_SOUTH -> cart.setYRot(180.0F);
                     }
 
                     level.addFreshEntity(cart);

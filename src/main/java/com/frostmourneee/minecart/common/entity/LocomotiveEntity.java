@@ -46,7 +46,7 @@ public class LocomotiveEntity extends AbstractCart {
     public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
-    public static final int FUEL_ADD_BY_CLICK = 180; //TODO change
+    public static final int FUEL_ADD_BY_CLICK = 18; //TODO change
 
     @Override
     public void tick() {
@@ -208,7 +208,7 @@ public class LocomotiveEntity extends AbstractCart {
 
     @Override
     public boolean canBeCollidedWith() {
-        return isInClamp() && isAlive();
+        return isClamped() && isAlive();
     }
 
     @Override

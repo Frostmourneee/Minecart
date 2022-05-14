@@ -39,18 +39,18 @@ public class WagonEntityModel<T extends WagonEntity> extends EntityModel<T> {
 		.texOffs(0, 67).addBox(-7.0F, -10.0F, -9.0F, 14.0F, 9.0F, 1.0F, new CubeDeformation(0.0F))
 		.texOffs(58, 59).addBox(-7.0F, -10.0F, -8.0F, 1.0F, 9.0F, 16.0F, new CubeDeformation(0.0F))
 		.texOffs(39, 49).addBox(6.0F, -10.0F, -8.0F, 1.0F, 9.0F, 16.0F, new CubeDeformation(0.0F))
-		.texOffs(0, 20).addBox(-6.0F, -2.0F, -8.0F, 12.0F, 1.0F, 16.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 1.0F, 0.0F, 0.0F, 1.5708F, 3.1416F));
+		.texOffs(0, 20).addBox(-6.0F, -2.0F, -8.0F, 12.0F, 1.0F, 16.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, -5.0F, 0.0F, 0.0F, 1.5708F, 3.1416F));
 
 		PartDefinition hook = partdefinition.addOrReplaceChild("hook", CubeListBuilder.create().texOffs(0, 20).addBox(-1.0F, -2.0F, -14.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F))
 		.texOffs(10, 12).addBox(-1.0F, -3.0F, -12.0F, 2.0F, 2.0F, 1.0F, new CubeDeformation(0.0F))
 		.texOffs(0, 5).addBox(-2.0F, -4.0F, -11.0F, 4.0F, 3.0F, 1.0F, new CubeDeformation(0.0F))
 		.texOffs(11, 8).addBox(-1.0F, -4.0F, -14.0F, 2.0F, 2.0F, 1.0F, new CubeDeformation(0.0F))
-		.texOffs(0, 13).addBox(0.0F, -2.0F, -14.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 1.0F, 0.0F, 0.0F, 1.5708F, 3.1416F));
+		.texOffs(0, 13).addBox(0.0F, -2.0F, -14.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, -5.0F, 0.0F, 0.0F, 1.5708F, 3.1416F));
 
 		PartDefinition hole = partdefinition.addOrReplaceChild("hole", CubeListBuilder.create().texOffs(0, 0).addBox(-2.0F, -4.0F, 10.0F, 4.0F, 3.0F, 1.0F, new CubeDeformation(0.0F))
 		.texOffs(11, 0).addBox(-2.0F, -3.0F, 11.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F))
 		.texOffs(11, 4).addBox(1.0F, -3.0F, 11.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F))
-		.texOffs(0, 10).addBox(-2.0F, -3.0F, 13.0F, 4.0F, 1.0F, 1.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 1.0F, 0.0F, 0.0F, 1.5708F, 3.1416F));
+		.texOffs(0, 10).addBox(-2.0F, -3.0F, 13.0F, 4.0F, 1.0F, 1.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, -5.0F, 0.0F, 0.0F, 1.5708F, 3.1416F));
 
 		return LayerDefinition.create(meshdefinition, 128, 128);
 	}
