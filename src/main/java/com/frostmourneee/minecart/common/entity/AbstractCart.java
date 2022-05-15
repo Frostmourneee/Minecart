@@ -73,9 +73,10 @@ public abstract class AbstractCart extends AbstractMinecart {
         //My code starts
         fieldsInitAndSidesSync();
 
-        restoreRelativeCarts();
-        clampingToFrontCart();
-        posCorrectionToFrontCart();
+        if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
+        if (isClamping) clampingToFrontCart();
+        if (hasFrontCart && frontCart.tickCount > tickCount) posCorrectionToFrontCart();
+        if (hasBackCart && tickCount < backCart.tickCount) backCartPosCorrectionToThis();
         collisionProcessing();
     }
 
@@ -149,45 +150,43 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
     }
     public void clampingToFrontCart() {
-        if (isClamping) {
-            ArrayList<AbstractCart> frontAbstractCart;
-            AABB areaOfSearch = getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
-            frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 4 FRONT BLOCKS
-            frontAbstractCart.removeIf(cart -> cart.equals(this));
+        ArrayList<AbstractCart> frontAbstractCart;
+        AABB areaOfSearch = getAABBBetweenBlocks(new BlockPos(position()).relative(getDirection()), new BlockPos(position()).relative(getDirection(), 4));
+        frontAbstractCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch); //LOOKING FOR CARTS IN 4 FRONT BLOCKS
+        frontAbstractCart.removeIf(cart -> cart.equals(this));
 
-            if (frontAbstractCart.isEmpty()) {
-                clampingFail();
-                return;
-            }
-            AbstractCart potentialFrontCart = frontAbstractCart.get(0);
-            for (int i = 1; i < frontAbstractCart.size(); i++) {
-                if (frontAbstractCart.get(i).distanceTo(this) < potentialFrontCart.distanceTo(this)) {
-                    potentialFrontCart = frontAbstractCart.get(i);
-                }
-            } //SEARCHING FOR THE NEAREST CART
-
-            ArrayList<BlockPos> furtherBlockPos = getAllBlockPosesInBox
-                    (new BlockPos(position()).relative(getDirection()), new BlockPos(potentialFrontCart.position()));
-
-            boolean canScanForFrontCart = true;
-            for (BlockPos blockPos : furtherBlockPos) {
-                if (!level.getBlockState(blockPos).is(BlockTags.RAILS)) {
-                    canScanForFrontCart = false;
-                    break;
-                }
-            } //Checks if blocks except rails are between this and potential frontCart
-
-            if (!canScanForFrontCart) {
-                clampingFail();
-                return;
-            }
-            if (!potentialFrontCart.zeroDelta() && !potentialFrontCart.getDirection().equals(getDirection())) {
-                clampingFail();
-                return;
-            }
-
-            smoothClampingFunction(potentialFrontCart);
+        if (frontAbstractCart.isEmpty()) {
+            clampingFail();
+            return;
         }
+        AbstractCart potentialFrontCart = frontAbstractCart.get(0);
+        for (int i = 1; i < frontAbstractCart.size(); i++) {
+            if (frontAbstractCart.get(i).distanceTo(this) < potentialFrontCart.distanceTo(this)) {
+                potentialFrontCart = frontAbstractCart.get(i);
+            }
+        } //SEARCHING FOR THE NEAREST CART
+
+        ArrayList<BlockPos> furtherBlockPos = getAllBlockPosesInBox
+                (new BlockPos(position()).relative(getDirection()), new BlockPos(potentialFrontCart.position()));
+
+        boolean canScanForFrontCart = true;
+        for (BlockPos blockPos : furtherBlockPos) {
+            if (!level.getBlockState(blockPos).is(BlockTags.RAILS)) {
+                canScanForFrontCart = false;
+                break;
+            }
+        } //Checks if blocks except rails are between this and potential frontCart
+
+        if (!canScanForFrontCart) {
+            clampingFail();
+            return;
+        }
+        if (!potentialFrontCart.zeroDelta() && !potentialFrontCart.getDirection().equals(getDirection())) {
+            clampingFail();
+            return;
+        }
+
+        smoothClampingFunction(potentialFrontCart);
     } //ONLY WITHOUT REJOIN
     public void smoothClampingFunction(AbstractCart potentialFrontCart) {
         double dist = distanceTo(potentialFrontCart);
@@ -223,10 +222,16 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isCommonActing() {
         return !isFindingFrontCartAfterRejoin && !isFindingBackCartAfterRejoin && !isClamping;
     }
-    public boolean isSlowingOrAcceleratingOnPlaneWithLocomotive() {
+
+    /**
+     * @return true if a cart is in clamp and accelerates/slowdowns. Return false in other ways.
+     * zeroDeltaMovementHorizontal() should be used instead of zeroDeltaHorizontal() because on the client side
+     * delta equals Vec3.ZERO for the first ticks when cart accelerates.
+     */
+    public boolean isHorizontalAccelerationNotZeroInClamp() {
         if (getLocomotive() == null) return false;
 
-        return Math.abs(frontCart.deltaMovement.horizontalDistance()) < 2.0D && !frontCart.zeroDeltaHorizontal();
+        return (Math.abs(deltaMovement.horizontalDistance()) < 2.0D && !zeroDeltaMovementHorizontal());
     }
     public void clampingFail() {
         setDeltaMovement(getDeltaMovement().scale(0.2D));
@@ -403,19 +408,22 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
 
     public void posCorrectionToFrontCart() {
-        if (hasFrontCart) {
-            /*
-              Only for straight line moving section
-             */
-            if (goesUp()) {
-                setPos(frontCart.position().add(frontCart.oppDirToVec3().subtract(0.0D, 1.0D, 0.0D).scale(1.149D)));
-            }
-            if (goesDown()) {
-                setPos(frontCart.position().add(frontCart.oppDirToVec3().add(0.0D, 1.0D, 0.0D).scale(1.149D)));
-            }
-            if (isOnHorizontalLine() && isCommonActing() && isSlowingOrAcceleratingOnPlaneWithLocomotive()) {
-                setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
-            }
+        /*
+           Only for straight line movement section
+         */
+        if (goesUp()) {
+            setPos(frontCart.position().add(frontCart.oppDirToVec3().subtract(0.0D, 1.0D, 0.0D).scale(1.149D)));
+        }
+        if (goesDown()) {
+            setPos(frontCart.position().add(frontCart.oppDirToVec3().add(0.0D, 1.0D, 0.0D).scale(1.149D)));
+        }
+        if (isOnHorizontalLine(frontCart) && isCommonActing() && frontCart.isHorizontalAccelerationNotZeroInClamp()) {
+            setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
+        }
+    }
+    public void backCartPosCorrectionToThis() {
+        if (isOnHorizontalLine(backCart) && isCommonActing() && isHorizontalAccelerationNotZeroInClamp()) {
+            backCart.setPos(position().add(oppDirToVec3().scale(1.625D)));
         }
     }
 
@@ -857,9 +865,9 @@ public abstract class AbstractCart extends AbstractMinecart {
                     (goesDown() && frontCart.goesDown()) ||
                     (goesFlat() && frontCart.goesFlat());
     }
-    public boolean isOnHorizontalLine() {
-        if (hasFrontCart) return Math.abs(getY() - frontCart.getY()) < 1.0E-4
-                && (Math.abs(getX() - frontCart.getX()) < 1.0E-4 || Math.abs(getZ() - frontCart.getZ()) < 1.0E-4);
+    public boolean isOnHorizontalLine(AbstractCart cart) {
+        if (cart != null) return Math.abs(getY() - cart.getY()) < 1.0E-4 &&
+                (Math.abs(getX() - cart.getX()) < 1.0E-4 || Math.abs(getZ() - cart.getZ()) < 1.0E-4);
         else return false;
     }
 
@@ -872,9 +880,10 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean zeroDeltaHorizontal() {
         return nearZero(delta.subtract(0.0D, delta.y, 0.0D), 1.0E-3);
     }
-    public boolean zeroDeltaHorizontalBigIndent() {
-        return nearZero(delta.subtract(0.0D, delta.y, 0.0D), 5.0E-2);
-    }
+    public boolean zeroDeltaMovement() {
+        return nearZero(deltaMovement, 1.0E-3); }
+    public boolean zeroDeltaMovementHorizontal() {
+        return nearZero(deltaMovement.subtract(0.0D, deltaMovement.y, 0.0D), 1.0E-3); }
     public boolean isStopped() {
         return delta.equals(Vec3.ZERO);
     }
