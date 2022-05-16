@@ -53,16 +53,14 @@ public class LocomotiveEntity extends AbstractCart {
         super.tick();
 
         //My code starts
-        Vec3 delta = getDeltaMovement();
-
-        stopBeforeTurnWhenSlow(delta);
+        stopBeforeTurnWhenSlow(deltaMovement);
         fuelControl();
         smokeAnim();
         addFuelByHopper(FUEL_ADD_BY_CLICK);
     }
 
     @Override
-    protected void moveAlongTrack(BlockPos blockPos, BlockState blockState) {
+    protected void moveAlongTrack(@NotNull BlockPos blockPos, @NotNull BlockState blockState) {
         super.moveAlongTrack(blockPos, blockState);
 
         Vec3 vec3 = getDeltaMovement();
@@ -78,7 +76,7 @@ public class LocomotiveEntity extends AbstractCart {
     }
 
     @Override
-    public InteractionResult interact(Player player, InteractionHand interactionHand) {
+    public @NotNull InteractionResult interact(@NotNull Player player, @NotNull InteractionHand interactionHand) {
         InteractionResult ret = super.interact(player, interactionHand);
         if (ret.consumesAction()) return ret;
         ItemStack itemstack = player.getItemInHand(interactionHand);
@@ -207,15 +205,27 @@ public class LocomotiveEntity extends AbstractCart {
     }
 
     @Override
-    public boolean canBeCollidedWith() {
-        return isClamped() && isAlive();
-    }
-
-    @Override
     public void setDeltaMovement(Vec3 vec) {
-        deltaMovement = vec;
+        if (vec.equals(Vec3.ZERO)) {
+            deltaMovement = Vec3.ZERO;
+            return;
+        }
+        deltaMovement = vec.subtract(0.0D, vec.y, 0.0D);
 
-        if (deltaMovement.length() < 1.0E-4) deltaMovement = Vec3.ZERO;
+        if (deltaMovement.length() < 1.0E-4 && !deltaMovement.equals(Vec3.ZERO)) {
+            deltaMovement = Vec3.ZERO;
+            if (isClamped()) {
+                entityData.set(DATA_SERVER_POS, position().add(0.0D, 0.0625D, 0.0D).toString());
+                //0.0625D added because for some reason in this setDeltaMovement() pos.y == -60 instead of needed -59.9375
+
+                AbstractCart tmpCart = this;
+                while (tmpCart.hasBackCart) {
+                    tmpCart = tmpCart.backCart;
+                    tmpCart.setDeltaMovement(Vec3.ZERO);
+                    tmpCart.getEntityData().set(DATA_SERVER_POS, tmpCart.position().toString());
+                }
+            }
+        }
     }
     @Override
     protected double getMaxSpeed() {

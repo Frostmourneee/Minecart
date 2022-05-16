@@ -46,6 +46,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_BACK_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<String> DATA_SERVER_POS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.STRING);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
 
@@ -75,8 +76,12 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
         if (isClamping) clampingToFrontCart();
-        if (hasFrontCart && frontCart.tickCount > tickCount) posCorrectionToFrontCart();
-        if (hasBackCart && tickCount < backCart.tickCount) backCartPosCorrectionToThis();
+        /*
+         * getId() is used to determine who was spawned earlier. Entity#tickCount should not be used because after rejoin
+         * tickCounts are equal
+         */
+        if (hasFrontCart && frontCart.getId() < getId()) posCorrectionToFrontCart();
+        if (hasBackCart && getId() > backCart.getId()) backCartPosCorrectionToThis();
         collisionProcessing();
     }
 
@@ -97,7 +102,10 @@ public abstract class AbstractCart extends AbstractMinecart {
                 double d6 = getY() + (ly - getY()) / (double)lSteps;
                 double d7 = getZ() + (lz - getZ()) / (double)lSteps;
                 --lSteps;
-                setPos(d5, d6, d7);
+                if (!isClamped()) setPos(d5, d6, d7);
+                else {
+                    if (!deltaMovement.equals(Vec3.ZERO) || !isCommonActing()) setPos(d5, d6, d7);
+                }
             } else {
                 reapplyPosition();
             }
@@ -218,11 +226,16 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             isClamping = false;
         }
+
+        AbstractCart tmpCart = this;
+        while (tmpCart.hasBackCart) {
+            tmpCart = tmpCart.backCart;
+            tmpCart.setPos(tmpCart.frontCart.position().add(tmpCart.frontCart.oppDirToVec3().scale(1.625D)));
+        }
     }
     public boolean isCommonActing() {
         return !isFindingFrontCartAfterRejoin && !isFindingBackCartAfterRejoin && !isClamping;
     }
-
     /**
      * @return true if a cart is in clamp and accelerates/slowdowns. Return false in other ways.
      * zeroDeltaMovementHorizontal() should be used instead of zeroDeltaHorizontal() because on the client side
@@ -379,6 +392,10 @@ public abstract class AbstractCart extends AbstractMinecart {
             this.setDeltaMovement(this.getDeltaMovement().add(d1, d2, d3));
             this.hasImpulse = true;
         }
+    }
+    @Override
+    public boolean canBeCollidedWith() {
+        return isClamped() && isAlive();
     }
     public boolean isClamped() {
         return hasFrontCart || hasBackCart;
@@ -663,6 +680,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_BACKCART_EXISTS, false);
         entityData.define(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, false);
         entityData.define(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
+        entityData.define(DATA_SERVER_POS, "(0, 0, 0)");
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
     }
@@ -703,6 +721,19 @@ public abstract class AbstractCart extends AbstractMinecart {
             } else { //Called after death() method
                 hasFrontCart = false;
                 frontCart = null;
+            }
+        }
+
+        if (DATA_SERVER_POS.equals(data) && tickCount > 10) {
+            if (level.isClientSide) {
+                ArrayList<Double> posArray = new ArrayList<>();
+                for (String str : entityData.get(DATA_SERVER_POS).replace("(", "").replace(")", "").split(", ", 3))
+                    posArray.add(Double.parseDouble(str));
+
+                Vec3 pos = new Vec3(posArray.get(0), posArray.get(1), posArray.get(2));
+                if (nearZero(pos.subtract(0.0D, pos.y, 0.0D).subtract(position().subtract(0.0D, position().y, 0.0D)), 5.0E-2)) {
+                    setPos(pos);
+                }
             }
         }
 
@@ -794,7 +825,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             return null;
         }
     }
-    public AbstractCart getFirstCart() {
+    public AbstractCart getFirstWagonCart() {
         AbstractCart cart = this;
         while (cart.frontCart != null) {
             cart = cart.frontCart;

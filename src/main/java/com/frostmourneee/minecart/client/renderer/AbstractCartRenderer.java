@@ -35,10 +35,10 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
     }
 
     public void vertRotation(AbstractCart cart, PoseStack poseStack, float vertAngle) {
-        if (cart.alpha.get(cart.alpha.size() - 1) == -90.0F) {
+        if (!cart.alpha.isEmpty() && cart.alpha.get(cart.alpha.size() - 1) == -90.0F) {
             poseStack.mulPose(Vector3f.XP.rotationDegrees(vertAngle));
         }
-        else if (cart.alpha.get(cart.alpha.size() - 1) == 180.0F) {
+        else if (!cart.alpha.isEmpty() && cart.alpha.get(cart.alpha.size() - 1) == 180.0F) {
             poseStack.mulPose(Vector3f.ZP.rotationDegrees(-vertAngle));
         }
     }

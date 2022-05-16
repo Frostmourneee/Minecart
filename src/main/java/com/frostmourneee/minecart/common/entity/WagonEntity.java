@@ -18,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
+
 public class WagonEntity extends AbstractCart {
 
     public WagonEntity(EntityType entityType, Level level) {
@@ -80,17 +81,12 @@ public class WagonEntity extends AbstractCart {
     @Override
     public void setDeltaMovement(@NotNull Vec3 vec) {
         if (hasFrontCart) {
-
-            if (frontCart.zeroDelta()) deltaMovement = Vec3.ZERO;
-            else deltaMovement = frontCart.deltaMovement;
+            deltaMovement = frontCart.deltaMovement;
         } else deltaMovement = vec;
 
-        if (deltaMovement.length() < 1.0E-4) deltaMovement = Vec3.ZERO;
-    }
-
-    @Override
-    public boolean canBeCollidedWith() {
-        return isClamped() && isAlive();
+        if (deltaMovement.length() < 1.0E-4) {
+            deltaMovement = Vec3.ZERO;
+        }
     }
 
     public void spawnAfterCartLeaving() {
