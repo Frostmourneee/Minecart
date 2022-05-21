@@ -46,6 +46,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_BACK_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
+    //NOT FOR REJOIN YET
+    public static final EntityDataAccessor<Boolean> DATA_IS_CLAMPING = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<String> DATA_SERVER_POS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.STRING);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
@@ -222,9 +224,10 @@ public abstract class AbstractCart extends AbstractMinecart {
             connectFront(potentialFrontCart);
             setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
 
-            cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
+            cartSound(ccSoundInit.CART_CLAMP.get());
 
             isClamping = false;
+            if (level.isClientSide) setIsClamping(false);
         }
 
         AbstractCart tmpCart = this;
@@ -248,7 +251,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     public void clampingFail() {
         setDeltaMovement(getDeltaMovement().scale(0.2D));
-        isClamping = false;
+        setIsClamping(false);
     }
 
     public void collisionProcessing() {
@@ -357,7 +360,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                                 resetBack();
                             }
 
-                            cartSound(10.0F, ccSoundInit.CART_DEATH.get());
+                            cartSound(ccSoundInit.CART_DEATH.get());
                             remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                 spawnAtLocation(LOCOMOTIVE_ITEM.get());
@@ -371,7 +374,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                                 resetFront();
                             }
 
-                            cartSound(10.0F, ccSoundInit.CART_DEATH.get());
+                            cartSound(ccSoundInit.CART_DEATH.get());
                             remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                 spawnAtLocation(LOCOMOTIVE_ITEM.get());
@@ -386,7 +389,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void push(double d1, double d2, double d3) {
         if (isClamping) {
             setDeltaMovement(Vec3.ZERO);
-            isClamping = false;
+            setIsClamping(false);
         }
         if (!isClamped()) {
             this.setDeltaMovement(this.getDeltaMovement().add(d1, d2, d3));
@@ -576,7 +579,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         frontAbstractCart.removeIf(cart -> cart.equals(this));
 
         if (frontAbstractCart.isEmpty()) {
-            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
+            cartSound(ccSoundInit.CART_CLAMP_FAIL.get());
             return;
         }
         AbstractCart potentialFrontCart = frontAbstractCart.get(0);
@@ -598,25 +601,25 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
 
         if (!canScanForFrontCart) {
-            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
+            cartSound(ccSoundInit.CART_CLAMP_FAIL.get());
             return;
         }
         if (!potentialFrontCart.getDirection().equals(getDirection())) {
-            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
+            cartSound(ccSoundInit.CART_CLAMP_FAIL.get());
             return;
         }
 
         setDeltaMovement(Vec3.ZERO);
         potentialFrontCart.setDeltaMovement(Vec3.ZERO);
 
-        if (distanceTo(potentialFrontCart) > 1.625D) isClamping = true;
+        if (distanceTo(potentialFrontCart) > 1.625D) setIsClamping(true);
         else if (distanceTo(potentialFrontCart) == 1.625D || !hasBackCart) {
             potentialFrontCart.connectBack(this);
             connectFront(potentialFrontCart);
             setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
-            cartSound(5.5F, ccSoundInit.CART_CLAMP.get());
+            cartSound(ccSoundInit.CART_CLAMP.get());
         } else {
-            cartSound(5.5F, ccSoundInit.CART_CLAMP_FAIL.get());
+            cartSound(ccSoundInit.CART_CLAMP_FAIL.get());
         }
     }
 
@@ -661,7 +664,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             resetFront();
         }
 
-        cartSound(0.0F, ccSoundInit.CART_DEATH.get());
+        cartSound(ccSoundInit.CART_DEATH.get());
     }  //SERVER ONLY
 
     @Override
@@ -680,6 +683,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_BACKCART_EXISTS, false);
         entityData.define(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, false);
         entityData.define(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
+        entityData.define(DATA_IS_CLAMPING, false);
         entityData.define(DATA_SERVER_POS, "(0, 0, 0)");
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
@@ -691,6 +695,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         if (DATA_IS_FINDING_BACK_CART_AFTER_REJOIN.equals(data)) {
             isFindingBackCartAfterRejoin = (boolean)entityData.get(data);
+        }
+        if (DATA_IS_CLAMPING.equals(data)) {
+            isClamping = (boolean)entityData.get(data);
         }
 
         if (DATA_BACKCART_EXISTS.equals(data) && isCommonActing()) {
@@ -956,18 +963,18 @@ public abstract class AbstractCart extends AbstractMinecart {
         debugMode = bool;
         entityData.set(DATA_DEBUG_MODE, bool);
     } //Need to send updated info to server and then to all players (clients) on the server via onSyncedDataUpdated()
+    public void setIsClamping(boolean bool) {
+        isClamping = bool;
+        entityData.set(DATA_IS_CLAMPING, bool);
+    } //Need to send updated info to server and then to all players (clients) on the server via onSyncedDataUpdated()
 
-    public void cartSoundPrevious(float distance, SoundEvent soundEvent) {
-        Player player = level.getNearestPlayer(this, distance);
-
-        if (player != null) level.playSound(player, new BlockPos(position()),
-                soundEvent, SoundSource.BLOCKS, 1.0F, 1.0F);
-        else if (distance == 0.0F) level.playSound(null, new BlockPos(position()),
-                soundEvent, SoundSource.BLOCKS, 1.0F, 1.0F);
-    }
-    public void cartSound(float distance, SoundEvent soundEvent) {
-        Player player = level.getNearestPlayer(this, distance);
-        level.playSound(player, new BlockPos(position()), soundEvent, SoundSource.NEUTRAL, 1.0F, 1.0F);
+    /**
+     * Method to play a sound to every player in ~16 blocks area.
+     * Works correct if is called on server side or both sides
+     * @param soundEvent - sound to be played
+     */
+    public void cartSound(SoundEvent soundEvent) {
+        level.playSound(null, new BlockPos(position()), soundEvent, SoundSource.NEUTRAL, 1.0F, 1.0F);
     }
 
     public enum Type {
