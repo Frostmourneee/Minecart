@@ -19,7 +19,10 @@
 
   "entity.locomotive.start" : {
     "sounds": [
-      "minecart:locomotive_start"
+      {
+        "name": "minecart:locomotive_start",
+        "attenuation_distance": 16
+      }
     ]
   },
 

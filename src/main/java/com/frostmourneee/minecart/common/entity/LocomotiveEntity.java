@@ -87,7 +87,7 @@ public class LocomotiveEntity extends AbstractCart {
             }
             fuel += FUEL_ADD_BY_CLICK;
 
-            cartSound(15.0F, ccSoundInit.LOCOMOTIVE_START.get());
+            cartSound(ccSoundInit.LOCOMOTIVE_START.get());
         }
 
         if (fuel > 0) {
