@@ -54,17 +54,13 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public Vec3 delta = Vec3.ZERO;
     public float horAngle = 0.0F; //USED ONLY IN RENDERER, HERE ALWAYS TRUE ONLY ON THE CLIENT
-    public float vertAngle = 0.0F;
     public ArrayList<Float> alpha = new ArrayList<>();
 
-    public boolean hasBackCart = false;
-    public boolean hasFrontCart = false;
     public boolean isFindingBackCartAfterRejoin = false;
     public boolean isFindingFrontCartAfterRejoin = false;
     public boolean isClamping = false;
 
     public boolean debugMode = false; //TODO remove
-    public int debugCounter = 0;
 
     public AbstractCart backCart = null;
     public AbstractCart frontCart = null;
@@ -82,8 +78,8 @@ public abstract class AbstractCart extends AbstractMinecart {
          * getId() is used to determine who was spawned earlier. Entity#tickCount should not be used because after rejoin
          * tickCounts are equal
          */
-        if (hasFrontCart && frontCart.getId() < getId()) posCorrectionToFrontCart();
-        if (hasBackCart && getId() > backCart.getId()) backCartPosCorrectionToThis();
+        if (hasFrontCart() && frontCart.getId() < getId()) posCorrectionToFrontCart();
+        if (hasBackCart() && getId() > backCart.getId()) backCartPosCorrectionToThis();
         collisionProcessing();
     }
 
@@ -98,6 +94,8 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         checkOutOfWorld();
         handleNetherPortal();
+        if (!readyAfterRejoin()) return;
+
         if (level.isClientSide) {
             if (lSteps > 0) {
                 double d5 = getX() + (lx - getX()) / (double)lSteps;
@@ -231,7 +229,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
 
         AbstractCart tmpCart = this;
-        while (tmpCart.hasBackCart) {
+        while (tmpCart.hasBackCart()) {
             tmpCart = tmpCart.backCart;
             tmpCart.setPos(tmpCart.frontCart.position().add(tmpCart.frontCart.oppDirToVec3().scale(1.625D)));
         }
@@ -303,7 +301,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             d1 *= 0.05F;
 
             if (!entity.isVehicle()) {
-                if ((entity instanceof AbstractCart && !((AbstractCart)entity).hasFrontCart && !((AbstractCart)entity).hasBackCart)) {
+                if (entity instanceof AbstractCart && !((AbstractCart)entity).isClamped()) {
                     entity.push(-d0, 0.0D, -d1);
                 } else if (!(entity instanceof AbstractCart)) {
                     entity.push(-d0, 0.0D, -d1);
@@ -312,7 +310,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             switch (getCartType()) {
                 case WAGON, LOCOMOTIVE -> {
-                    if (!isVehicle() && !hasBackCart && !hasFrontCart) {
+                    if (!isVehicle() && !isClamped()) {
                         push(d0, 0.0D, d1); //TODO change
                     }
                 }
@@ -339,7 +337,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             d1 *= 0.05F;
 
             if (!entity.isVehicle()) {
-                if (entity instanceof AbstractCart && !((AbstractCart) entity).hasBackCart && !((AbstractCart) entity).hasFrontCart) {
+                if (entity instanceof AbstractCart && !((AbstractCart) entity).isClamped()) {
                     entity.push(-d0, 0.0D, -d1);
                 } else if (!(entity instanceof AbstractCart)) {
                     entity.push(-d0, 0.0D, -d1);
@@ -348,14 +346,14 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             switch (getCartType()) {
                 case WAGON -> {
-                    if (!isVehicle() && !hasBackCart && !hasFrontCart) {
+                    if (!isVehicle() && !isClamped()) {
                         push(d0 / 5, 0.0D, d1 / 5); //TODO change
                     }
                 }
                 case LOCOMOTIVE -> {
                     if (entity instanceof AbstractCart) {
                         if (!zeroDeltaBigIndent() && ((AbstractCart) entity).zeroDeltaBigIndent()) {
-                            if (hasBackCart) {
+                            if (hasBackCart()) {
                                 backCart.resetFront();
                                 resetBack();
                             }
@@ -369,7 +367,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                     }
                     else {
                         if (!zeroDeltaBigIndent() && nearZero(entity.deltaMovement, 5.0E-1)) {
-                            if (hasBackCart) {
+                            if (hasBackCart()) {
                                 backCart.resetFront();
                                 resetFront();
                             }
@@ -401,7 +399,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         return isClamped() && isAlive();
     }
     public boolean isClamped() {
-        return hasFrontCart || hasBackCart;
+        return hasFrontCart() || hasBackCart();
     }
 
     public abstract AbstractCart.Type getCartType();
@@ -613,7 +611,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         potentialFrontCart.setDeltaMovement(Vec3.ZERO);
 
         if (distanceTo(potentialFrontCart) > 1.625D) setIsClamping(true);
-        else if (distanceTo(potentialFrontCart) == 1.625D || !hasBackCart) {
+        else if (distanceTo(potentialFrontCart) == 1.625D || !hasBackCart()) {
             potentialFrontCart.connectBack(this);
             connectFront(potentialFrontCart);
             setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
@@ -711,7 +709,6 @@ public abstract class AbstractCart extends AbstractMinecart {
                     potentialBackCart.connectFront(this);
                 }
             } else { //Called after death() method
-                hasBackCart = false;
                 backCart = null;
             }
         }
@@ -726,12 +723,11 @@ public abstract class AbstractCart extends AbstractMinecart {
                     potentialFrontCart.connectBack(this);
                 }
             } else { //Called after death() method
-                hasFrontCart = false;
                 frontCart = null;
             }
         }
 
-        if (DATA_SERVER_POS.equals(data) && tickCount > 10) {
+        if (DATA_SERVER_POS.equals(data) && readyAfterRejoin()) {
             if (level.isClientSide) {
                 ArrayList<Double> posArray = new ArrayList<>();
                 for (String str : entityData.get(DATA_SERVER_POS).replace("(", "").replace(")", "").split(", ", 3))
@@ -754,10 +750,10 @@ public abstract class AbstractCart extends AbstractMinecart {
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.addAdditionalSaveData(compoundTag);
 
-        compoundTag.putBoolean("hasFrontCart", hasFrontCart);
-        compoundTag.putBoolean("hasBackCart", hasBackCart);
-        compoundTag.putBoolean("isFindingBackCartAfterRejoin", hasBackCart);
-        compoundTag.putBoolean("isFindingFrontCartAfterRejoin", hasFrontCart);
+        compoundTag.putBoolean("hasFrontCart", hasFrontCart());
+        compoundTag.putBoolean("hasBackCart", hasBackCart());
+        compoundTag.putBoolean("isFindingBackCartAfterRejoin", hasBackCart());
+        compoundTag.putBoolean("isFindingFrontCartAfterRejoin", hasFrontCart());
         if (isClamping) setDeltaMovement(getDeltaMovement().scale(0.2D));
 
         compoundTag.putBoolean("debug", debugMode); //TODO remove
@@ -943,22 +939,24 @@ public abstract class AbstractCart extends AbstractMinecart {
 
     public void setHasBackCart(boolean bool) {
         if (bool && backCart != null) {
-            hasBackCart = true;
             entityData.set(DATA_BACKCART_EXISTS, true);
         } else {
-            hasBackCart = false;
             entityData.set(DATA_BACKCART_EXISTS, false);
         }
     } //Make sure you setHasBackCart to true only if backCart != null
     public void setHasFrontCart(boolean bool) {
         if (bool && frontCart != null) {
-            hasFrontCart = true;
             entityData.set(DATA_FRONTCART_EXISTS, true);
         } else {
-            hasFrontCart = false;
             entityData.set(DATA_FRONTCART_EXISTS, false);
         }
     } //Make sure you setHasFrontCart to true only if frontCart != null
+    public boolean hasBackCart() {
+        return backCart != null;
+    }
+    public boolean hasFrontCart() {
+        return frontCart != null;
+    }
     public void setDebugMode(boolean bool) {
         debugMode = bool;
         entityData.set(DATA_DEBUG_MODE, bool);
@@ -967,6 +965,10 @@ public abstract class AbstractCart extends AbstractMinecart {
         isClamping = bool;
         entityData.set(DATA_IS_CLAMPING, bool);
     } //Need to send updated info to server and then to all players (clients) on the server via onSyncedDataUpdated()
+
+    public boolean readyAfterRejoin() {
+        return tickCount > 7;
+    }
 
     /**
      * Method to play a sound to every player in ~16 blocks area.

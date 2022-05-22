@@ -52,7 +52,7 @@ public class WagonEntityRenderer extends AbstractCartRenderer {
     @Override
     public @NotNull ResourceLocation getTextureLocation(@NotNull AbstractCart cart) {
         if (cart.debugMode) {
-            return cart.hasFrontCart ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
-        } else return cart.hasFrontCart ? TEXTURE_GREEN : TEXTURE_RED;
+            return cart.hasFrontCart() ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
+        } else return cart.hasFrontCart() ? TEXTURE_GREEN : TEXTURE_RED;
     }
 }

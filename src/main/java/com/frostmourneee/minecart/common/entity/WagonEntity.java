@@ -50,7 +50,7 @@ public class WagonEntity extends AbstractCart {
         } //Second click via clamp item when cart is clamping works just as clicking with no clamp item
 
         if (canBeClamped(itemStack)) {
-            if (hasFrontCart) {
+            if (hasFrontCart()) {
                 cartSound(ccSoundInit.CART_UNCLAMP.get());
                 frontCart.resetBack();
                 resetFront();
@@ -83,7 +83,7 @@ public class WagonEntity extends AbstractCart {
     } //TODO change
     @Override
     public void setDeltaMovement(@NotNull Vec3 vec) {
-        if (hasFrontCart) {
+        if (hasFrontCart()) {
             deltaMovement = frontCart.deltaMovement;
         } else deltaMovement = vec;
 
@@ -93,7 +93,7 @@ public class WagonEntity extends AbstractCart {
     }
 
     public void spawnAfterCartLeaving() {
-        if (hasFrontCart && getPassengers().isEmpty()) {
+        if (hasFrontCart() && getPassengers().isEmpty()) {
             AABB miniBox;
             miniBox = getBoundingBox().deflate(0.1D, 0.0F, 0.1D);
 
