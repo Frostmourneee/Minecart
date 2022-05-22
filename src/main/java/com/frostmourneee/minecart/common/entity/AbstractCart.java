@@ -46,8 +46,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_FRONTCART_EXISTS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_BACK_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
-    //NOT FOR REJOIN YET
     public static final EntityDataAccessor<Boolean> DATA_IS_CLAMPING = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Boolean> DATA_IS_FIRST_TIME_SPAWNED = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<String> DATA_SERVER_POS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.STRING);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
@@ -59,6 +59,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isFindingBackCartAfterRejoin = false;
     public boolean isFindingFrontCartAfterRejoin = false;
     public boolean isClamping = false;
+    public boolean isFirstTimeSpawned = false;
 
     public boolean debugMode = false; //TODO remove
 
@@ -71,7 +72,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //My code starts
         fieldsInitAndSidesSync();
-
+        customPrint(this, tickCount);
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
         if (isClamping) clampingToFrontCart();
         /*
@@ -94,7 +95,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         checkOutOfWorld();
         handleNetherPortal();
-        if (!readyAfterRejoin()) return;
+        if (!readyAfterRejoin() && !isFirstTimeSpawned) return;
 
         if (level.isClientSide) {
             if (lSteps > 0) {
@@ -682,6 +683,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, false);
         entityData.define(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
         entityData.define(DATA_IS_CLAMPING, false);
+        entityData.define(DATA_IS_FIRST_TIME_SPAWNED, false);
         entityData.define(DATA_SERVER_POS, "(0, 0, 0)");
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
@@ -696,6 +698,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         if (DATA_IS_CLAMPING.equals(data)) {
             isClamping = (boolean)entityData.get(data);
+        }
+        if (DATA_IS_FIRST_TIME_SPAWNED.equals(data)) {
+            isFirstTimeSpawned = (boolean)entityData.get(data);
         }
 
         if (DATA_BACKCART_EXISTS.equals(data) && isCommonActing()) {
@@ -952,6 +957,9 @@ public abstract class AbstractCart extends AbstractMinecart {
             entityData.set(DATA_FRONTCART_EXISTS, false);
         }
     } //Make sure you setHasFrontCart to true only if frontCart != null
+    public void setIsFirstTimeSpawned(boolean bool) {
+        entityData.set(DATA_IS_FIRST_TIME_SPAWNED, bool);
+    } //
     public boolean hasBackCart() {
         return backCart != null;
     }
