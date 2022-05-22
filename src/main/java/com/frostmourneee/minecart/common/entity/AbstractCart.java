@@ -754,7 +754,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         compoundTag.putBoolean("hasBackCart", hasBackCart());
         compoundTag.putBoolean("isFindingBackCartAfterRejoin", hasBackCart());
         compoundTag.putBoolean("isFindingFrontCartAfterRejoin", hasFrontCart());
-        if (isClamping) setDeltaMovement(getDeltaMovement().scale(0.2D));
+        compoundTag.putBoolean("isClamping", isClamping);
 
         compoundTag.putBoolean("debug", debugMode); //TODO remove
     } //SERVER ONLY
@@ -768,6 +768,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.set(DATA_FRONTCART_EXISTS, compoundTag.getBoolean("hasFrontCart"));
         entityData.set(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, compoundTag.getBoolean("isFindingBackCartAfterRejoin"));
         entityData.set(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, compoundTag.getBoolean("isFindingFrontCartAfterRejoin"));
+        entityData.set(DATA_IS_CLAMPING, compoundTag.getBoolean("isClamping"));
     } //SERVER ONLY
 
     public void restoreRelativeCarts() {
