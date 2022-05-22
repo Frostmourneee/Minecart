@@ -88,7 +88,7 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
         double d1 = Mth.lerp(float2, cart.yOld, cart.getY());
         double d2 = Mth.lerp(float2, cart.zOld, cart.getZ());
         Vec3 vec3 = cart.getPos(d0, d1, d2);
-        cart.vertAngle = Mth.lerp(float2, cart.xRotO, cart.getXRot());
+        float vertAngle = Mth.lerp(float2, cart.xRotO, cart.getXRot());
         if (vec3 != null) {
             Vec3 vec31 = cart.getPosOffs(d0, d1, d2, 0.3F);
             Vec3 vec32 = cart.getPosOffs(d0, d1, d2, -0.3F);
@@ -105,12 +105,12 @@ public abstract class AbstractCartRenderer extends EntityRenderer<AbstractCart> 
             if (vec33.length() != 0.0D) {
                 vec33 = vec33.normalize();
                 cart.alpha.add((float)(Math.atan2(vec33.z, vec33.x) * 180.0D / Math.PI));
-                cart.vertAngle = (float)(Math.atan(vec33.y) * 73.0D);
+                vertAngle = (float)(Math.atan(vec33.y) * 73.0D);
             }
         }
 
         poseStack.translate(0.0D, 0.375D, 0.0D);
-        vertRotation(cart, poseStack, cart.vertAngle);
+        vertRotation(cart, poseStack, vertAngle);
     }
 
     public void debugMode (AbstractCart cart, PoseStack poseStack, MultiBufferSource buffer, int int6) {

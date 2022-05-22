@@ -46,7 +46,7 @@ public class LocomotiveEntity extends AbstractCart {
     public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
-    public static final int FUEL_ADD_BY_CLICK = 36; //TODO change
+    public static final int FUEL_ADD_BY_CLICK = 18; //TODO change
 
     @Override
     public void tick() {
@@ -81,18 +81,17 @@ public class LocomotiveEntity extends AbstractCart {
         if (ret.consumesAction()) return ret;
         ItemStack itemstack = player.getItemInHand(interactionHand);
 
-        if (INGREDIENT.test(itemstack) && fuel + 3600 <= 32000) {
+        if (INGREDIENT.test(itemstack) && fuel + FUEL_ADD_BY_CLICK <= 32000) {
             if (!player.getAbilities().instabuild) {
                 itemstack.shrink(1);
             }
+            if (fuel == 0) cartSound(ccSoundInit.LOCOMOTIVE_START.get());
             fuel += FUEL_ADD_BY_CLICK;
-
-            cartSound(ccSoundInit.LOCOMOTIVE_START.get());
         }
 
         if (fuel > 0) {
-            xPush = hasBackCart ? position().subtract(backCart.position()).x : getX() - player.getX();
-            zPush = hasBackCart ? position().subtract(backCart.position()).z : getZ() - player.getZ();
+            xPush = hasBackCart() ? position().subtract(backCart.position()).x : getX() - player.getX();
+            zPush = hasBackCart() ? position().subtract(backCart.position()).z : getZ() - player.getZ();
         }
 
         if (itemstack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
@@ -219,7 +218,7 @@ public class LocomotiveEntity extends AbstractCart {
                 //0.0625D added because for some reason in this setDeltaMovement() pos.y == -60 instead of needed -59.9375
 
                 AbstractCart tmpCart = this;
-                while (tmpCart.hasBackCart) {
+                while (tmpCart.hasBackCart()) {
                     tmpCart = tmpCart.backCart;
                     tmpCart.setDeltaMovement(Vec3.ZERO);
                     tmpCart.getEntityData().set(DATA_SERVER_POS, tmpCart.position().toString());
@@ -271,7 +270,7 @@ public class LocomotiveEntity extends AbstractCart {
         compoundTag.putShort("Fuel", (short)fuel);
     }
     @Override
-    protected void readAdditionalSaveData(CompoundTag compoundTag) {
+    protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         super.readAdditionalSaveData(compoundTag);
 
         xPush = compoundTag.getDouble("PushX");

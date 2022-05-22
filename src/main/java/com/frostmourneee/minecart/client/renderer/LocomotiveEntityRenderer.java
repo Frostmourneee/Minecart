@@ -58,7 +58,7 @@ public class LocomotiveEntityRenderer extends AbstractCartRenderer {
 
     @Override
     public @NotNull ResourceLocation getTextureLocation(@NotNull AbstractCart cart) {
-        if (cart.debugMode) return cart.hasBackCart ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
+        if (cart.debugMode) return cart.hasBackCart() ? TEXTURE_DEBUG_GREEN : TEXTURE_DEBUG_RED;
         else return TEXTURE;
     }
 
