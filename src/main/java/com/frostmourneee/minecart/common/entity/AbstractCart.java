@@ -72,7 +72,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //My code starts
         fieldsInitAndSidesSync();
-        customPrint(this, tickCount);
+
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
         if (isClamping) clampingToFrontCart();
         /*
