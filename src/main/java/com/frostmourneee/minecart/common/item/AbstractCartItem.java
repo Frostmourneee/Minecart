@@ -81,6 +81,7 @@ public abstract class AbstractCartItem extends Item {
                         case WAGON -> cart = new WagonEntity(ccEntityInit.WAGON_ENTITY.get(), level);
                         case LOCOMOTIVE -> cart = new LocomotiveEntity(ccEntityInit.LOCOMOTIVE_ENTITY.get(), level);
                     }
+                    cart.setIsFirstTimeSpawned(true);
 
                     RailShape railshape = rail.getRailDirection(blockstate, level, blockpos, null);
                     double d0 = 0.0D;
