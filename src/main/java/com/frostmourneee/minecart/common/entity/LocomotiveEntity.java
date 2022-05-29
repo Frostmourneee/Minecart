@@ -40,10 +40,18 @@ public class LocomotiveEntity extends AbstractCart {
     }
 
     public static final EntityDataAccessor<Boolean> DATA_ID_FUEL = SynchedEntityData.defineId(LocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Boolean> DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN = SynchedEntityData.defineId(LocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
 
     private int fuel = 0;
     public double xPush = 0.0D;
     public double zPush = 0.0D;
+
+    /*
+     Needed only in clamp so calculated properly only if in clamp.
+     Equals true only if locomotive has stopped by natural slowdown.
+     That means locomotive has no fuel and has no visible movement.
+     */
+    public boolean isStoppedByNaturalSlowdown = false;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
     public static final int FUEL_ADD_BY_CLICK = 18; //TODO change
@@ -205,15 +213,21 @@ public class LocomotiveEntity extends AbstractCart {
 
     @Override
     public void setDeltaMovement(Vec3 vec) {
-        if (vec.equals(Vec3.ZERO)) {
-            deltaMovement = Vec3.ZERO;
-            return;
-        }
-        deltaMovement = vec.subtract(0.0D, vec.y, 0.0D);
+        if (isClamped()) {
+            Vec3 vecHorizontal = vec.subtract(0.0D, vec.y, 0.0D);
+            if (vecHorizontal.length() < 1.0E-10) vecHorizontal = Vec3.ZERO;
+            if (vecHorizontal.equals(Vec3.ZERO)) {
+                deltaMovement = Vec3.ZERO;
+                return;
+            }
+            setIsStoppedByNaturalSlowdown(false);
+            deltaMovement = vecHorizontal;
 
-        if (deltaMovement.length() < 1.0E-4 && !deltaMovement.equals(Vec3.ZERO)) {
-            deltaMovement = Vec3.ZERO;
-            if (isClamped()) {
+            //Catches if locomotive has stopped by natural slowdown
+            if (deltaMovement.length() < ZERO_INDENT && !deltaMovement.equals(Vec3.ZERO)) {
+                deltaMovement = Vec3.ZERO;
+                setIsStoppedByNaturalSlowdown(true);
+
                 entityData.set(DATA_SERVER_POS, position().add(0.0D, 0.0625D, 0.0D).toString());
                 //0.0625D added because for some reason in this setDeltaMovement() pos.y == -60 instead of needed -59.9375
 
@@ -224,7 +238,17 @@ public class LocomotiveEntity extends AbstractCart {
                     tmpCart.getEntityData().set(DATA_SERVER_POS, tmpCart.position().toString());
                 }
             }
+        } else {
+            deltaMovement = vec;
+
+            if (deltaMovement.length() < ZERO_INDENT && !deltaMovement.equals(Vec3.ZERO)) {
+                deltaMovement = Vec3.ZERO;
+            }
         }
+    }
+    public void setIsStoppedByNaturalSlowdown(boolean bool) {
+        isStoppedByNaturalSlowdown = bool;
+        entityData.set(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, bool);
     }
     @Override
     protected double getMaxSpeed() {
@@ -260,6 +284,7 @@ public class LocomotiveEntity extends AbstractCart {
         super.defineSynchedData();
 
         entityData.define(DATA_ID_FUEL, false);
+        entityData.define(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, false);
     }
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
@@ -276,6 +301,14 @@ public class LocomotiveEntity extends AbstractCart {
         xPush = compoundTag.getDouble("PushX");
         zPush = compoundTag.getDouble("PushZ");
         fuel = compoundTag.getShort("Fuel");
+    }
+    @Override
+    public void onSyncedDataUpdated(@NotNull EntityDataAccessor<?> data) {
+        if (DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN.equals(data)) {
+            isStoppedByNaturalSlowdown = (boolean)entityData.get(data);
+        }
+
+        super.onSyncedDataUpdated(data);
     }
 
     public boolean hasFuel() {

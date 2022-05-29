@@ -62,6 +62,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isFirstTimeSpawned = false;
 
     public boolean debugMode = false; //TODO remove
+    public int debugTick = 0; //TODO remove
 
     public AbstractCart backCart = null;
     public AbstractCart frontCart = null;
@@ -70,17 +71,9 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void tick() {
         vanillaTick();
 
-        //My code starts
         fieldsInitAndSidesSync();
-
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
         if (isClamping) clampingToFrontCart();
-        /*
-         * getId() is used to determine who was spawned earlier. Entity#tickCount should not be used because after rejoin
-         * tickCounts are equal
-         */
-        if (hasFrontCart() && frontCart.getId() < getId()) posCorrectionToFrontCart();
-        if (hasBackCart() && getId() > backCart.getId()) backCartPosCorrectionToThis();
         collisionProcessing();
     }
 
@@ -103,10 +96,15 @@ public abstract class AbstractCart extends AbstractMinecart {
                 double d6 = getY() + (ly - getY()) / (double)lSteps;
                 double d7 = getZ() + (lz - getZ()) / (double)lSteps;
                 --lSteps;
-                if (!isClamped()) setPos(d5, d6, d7);
-                else {
-                    if (!deltaMovement.equals(Vec3.ZERO) || !isCommonActing()) setPos(d5, d6, d7);
-                }
+
+                if (isClamped()) {
+                    if (this instanceof LocomotiveEntity && !(deltaMovement.equals(Vec3.ZERO) && ((LocomotiveEntity)this).isStoppedByNaturalSlowdown)) {
+                        setPos(d5, d6, d7);
+                    }
+                    if (this instanceof WagonEntity && isClamping) {
+                        setPos(d5, d6, d7);
+                    }
+                } else setPos(d5, d6, d7);
             } else {
                 reapplyPosition();
             }
@@ -150,6 +148,12 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             firstTick = false;
         }
+        /*
+         * GetId() is used to determine who was spawned earlier. Entity#tickCount should not be used because after rejoin
+         * tickCounts are equal
+         */
+        if (hasFrontCart() && frontCart.getId() < getId()) posCorrectionToFrontCart();
+        if (hasBackCart() && getId() > backCart.getId()) backCartPosCorrectionToThis();
     }
     public void fieldsInitAndSidesSync() {
         /*
@@ -436,12 +440,12 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (goesDown()) {
             setPos(frontCart.position().add(frontCart.oppDirToVec3().add(0.0D, 1.0D, 0.0D).scale(1.149D)));
         }
-        if (isOnHorizontalLine(frontCart) && isCommonActing() && frontCart.isHorizontalAccelerationNotZeroInClamp()) {
+        if (isOnHorizontalLine(frontCart) && isCommonActing()) {
             setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
         }
     }
     public void backCartPosCorrectionToThis() {
-        if (isOnHorizontalLine(backCart) && isCommonActing() && isHorizontalAccelerationNotZeroInClamp()) {
+        if (isOnHorizontalLine(backCart) && isCommonActing()) {
             backCart.setPos(position().add(oppDirToVec3().scale(1.625D)));
         }
     }
@@ -746,7 +750,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
 
         if (DATA_DEBUG_MODE.equals(data)) {
-            this.debugMode = (boolean)entityData.get(data);
+            debugMode = (boolean)entityData.get(data);
         } //TODO remove debug
 
         super.onSyncedDataUpdated(data);
@@ -906,13 +910,13 @@ public abstract class AbstractCart extends AbstractMinecart {
                     (goesFlat() && frontCart.goesFlat());
     }
     public boolean isOnHorizontalLine(AbstractCart cart) {
-        if (cart != null) return Math.abs(getY() - cart.getY()) < 1.0E-4 &&
-                (Math.abs(getX() - cart.getX()) < 1.0E-4 || Math.abs(getZ() - cart.getZ()) < 1.0E-4);
+        if (cart != null) return Math.abs(getY() - cart.getY()) < ZERO_INDENT &&
+                (Math.abs(getX() - cart.getX()) < ZERO_INDENT || Math.abs(getZ() - cart.getZ()) < ZERO_INDENT);
         else return false;
     }
 
     public boolean zeroDelta() {
-        return nearZero(delta, 1.0E-4);
+        return nearZero(delta, ZERO_INDENT);
     }
     public boolean zeroDeltaBigIndent() {
         return nearZero(delta, 5.0E-2);
