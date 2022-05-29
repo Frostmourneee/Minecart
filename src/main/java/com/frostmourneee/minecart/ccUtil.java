@@ -14,8 +14,10 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 
 public class ccUtil {
-
     ccUtil() {}
+
+    //Standard near zero const
+    public static final double ZERO_INDENT = 1.0E-4;
 
     public static boolean nearZero(double value, double epsilon) {
         return Math.abs(value) < epsilon;

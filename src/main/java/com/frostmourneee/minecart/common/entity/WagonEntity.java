@@ -87,7 +87,7 @@ public class WagonEntity extends AbstractCart {
             deltaMovement = frontCart.deltaMovement;
         } else deltaMovement = vec;
 
-        if (deltaMovement.length() < 1.0E-4) {
+        if (deltaMovement.length() < 1.3E-4) {
             deltaMovement = Vec3.ZERO;
         }
     }
