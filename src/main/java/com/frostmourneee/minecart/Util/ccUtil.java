@@ -1,4 +1,4 @@
-package com.frostmourneee.minecart;
+package com.frostmourneee.minecart.Util;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -17,7 +17,8 @@ public class ccUtil {
     ccUtil() {}
 
     //Standard near zero const
-    public static final double ZERO_INDENT = 1.0E-4;
+    public static final double ZERO_INDENT4 = 1.0E-4;
+    public static final double ZERO_INDENT3 = 1.0E-3;
 
     public static boolean nearZero(double value, double epsilon) {
         return Math.abs(value) < epsilon;
@@ -42,6 +43,16 @@ public class ccUtil {
         else {
             return vec.y > 1.0E-4 ? Direction.UP : Direction.DOWN;
         }
+    }
+    public static boolean isAngleAcute(Vec3 a, Vec3 b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z > 0;
+    }
+    public static Vec3 horVec(Vec3 a) {
+        return new Vec3(a.x, 0.0D, a.z);
+    }
+    public static double cosOfVecs(Vec3 a, Vec3 b) {
+        if (nearZero(a, ZERO_INDENT4) || nearZero(b, ZERO_INDENT4)) return 1.0D;
+        else return (a.x * b.x + a.y * b.y + a.z * b.z) / (a.length() * b.length());
     }
     public static Vec3 blockPosToVec3 (BlockPos blockPos) {
         return new Vec3(blockPos.getX(), blockPos.getY(), blockPos.getZ());

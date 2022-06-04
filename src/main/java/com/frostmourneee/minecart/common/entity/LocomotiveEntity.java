@@ -1,6 +1,6 @@
 package com.frostmourneee.minecart.common.entity;
 
-import com.frostmourneee.minecart.ccUtil;
+import com.frostmourneee.minecart.Util.ccUtil;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
@@ -11,9 +11,12 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.item.ItemStack;
@@ -24,13 +27,14 @@ import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
-import static com.frostmourneee.minecart.ccUtil.*;
+import static com.frostmourneee.minecart.Util.ccUtil.*;
 import static net.minecraft.world.level.block.HopperBlock.FACING;
 
 public class LocomotiveEntity extends AbstractCart {
@@ -40,27 +44,20 @@ public class LocomotiveEntity extends AbstractCart {
     }
 
     public static final EntityDataAccessor<Boolean> DATA_ID_FUEL = SynchedEntityData.defineId(LocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
-    public static final EntityDataAccessor<Boolean> DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN = SynchedEntityData.defineId(LocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
 
     private int fuel = 0;
     public double xPush = 0.0D;
     public double zPush = 0.0D;
 
-    /*
-     Needed only in clamp so calculated properly only if in clamp.
-     Equals true only if locomotive has stopped by natural slowdown.
-     That means locomotive has no fuel and has no visible movement.
-     */
-    public boolean isStoppedByNaturalSlowdown = false;
-
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
-    public static final int FUEL_ADD_BY_CLICK = 18; //TODO change
+    public static final int FUEL_ADD_BY_CLICK = 72; //TODO change
 
     @Override
     public void tick() {
         super.tick();
 
         //My code starts
+
         stopBeforeTurnWhenSlow(deltaMovement);
         fuelControl();
         smokeAnim();
@@ -212,44 +209,128 @@ public class LocomotiveEntity extends AbstractCart {
     }
 
     @Override
-    public void setDeltaMovement(Vec3 vec) {
-        if (isClamped()) {
-            Vec3 vecHorizontal = vec.subtract(0.0D, vec.y, 0.0D);
-            if (vecHorizontal.length() < 1.0E-10) vecHorizontal = Vec3.ZERO;
-            if (vecHorizontal.equals(Vec3.ZERO)) {
-                deltaMovement = Vec3.ZERO;
-                return;
-            }
-            setIsStoppedByNaturalSlowdown(false);
-            deltaMovement = vecHorizontal;
-
-            //Catches if locomotive has stopped by natural slowdown
-            if (deltaMovement.length() < ZERO_INDENT && !deltaMovement.equals(Vec3.ZERO)) {
-                deltaMovement = Vec3.ZERO;
-                setIsStoppedByNaturalSlowdown(true);
-
-                entityData.set(DATA_SERVER_POS, position().add(0.0D, 0.0625D, 0.0D).toString());
-                //0.0625D added because for some reason in this setDeltaMovement() pos.y == -60 instead of needed -59.9375
-
-                AbstractCart tmpCart = this;
-                while (tmpCart.hasBackCart()) {
-                    tmpCart = tmpCart.backCart;
-                    tmpCart.setDeltaMovement(Vec3.ZERO);
-                    tmpCart.getEntityData().set(DATA_SERVER_POS, tmpCart.position().toString());
+    public void move(@NotNull MoverType pType, @NotNull Vec3 pPos) {
+        if (this.noPhysics) {
+            this.setPos(this.getX() + pPos.x, this.getY() + pPos.y, this.getZ() + pPos.z);
+        } else {
+            this.wasOnFire = this.isOnFire();
+            if (pType == MoverType.PISTON) {
+                pPos = this.limitPistonMovement(pPos);
+                if (pPos.equals(Vec3.ZERO)) {
+                    return;
                 }
             }
-        } else {
-            deltaMovement = vec;
 
-            if (deltaMovement.length() < ZERO_INDENT && !deltaMovement.equals(Vec3.ZERO)) {
-                deltaMovement = Vec3.ZERO;
+            this.level.getProfiler().push("move");
+            if (this.stuckSpeedMultiplier.lengthSqr() > 1.0E-7D) {
+                pPos = pPos.multiply(this.stuckSpeedMultiplier);
+                this.stuckSpeedMultiplier = Vec3.ZERO;
+                this.setDeltaMovement(Vec3.ZERO);
             }
+
+            pPos = this.maybeBackOffFromEdge(pPos, pType);
+            Vec3 vec3 = this.collide(pPos);
+            if (vec3.lengthSqr() > 1.0E-7D) {
+                this.setPos(this.getX() + vec3.x, this.getY() + vec3.y, this.getZ() + vec3.z);
+            }
+
+            this.level.getProfiler().pop();
+            this.level.getProfiler().push("rest");
+            this.horizontalCollision = !Mth.equal(pPos.x, vec3.x) || !Mth.equal(pPos.z, vec3.z);
+            this.verticalCollision = pPos.y != vec3.y;
+            if (this.horizontalCollision) {
+                this.minorHorizontalCollision = this.isHorizontalCollisionMinor(vec3);
+            } else {
+                this.minorHorizontalCollision = false;
+            }
+
+            this.onGround = this.verticalCollision && pPos.y < 0.0D;
+            BlockPos blockpos = this.getOnPos();
+            BlockState blockstate = this.level.getBlockState(blockpos);
+            this.checkFallDamage(vec3.y, this.onGround, blockstate, blockpos);
+            if (this.isRemoved()) {
+                this.level.getProfiler().pop();
+            } else {
+                Vec3 vec31 = this.getDeltaMovement();
+                if (pPos.x != vec3.x && deltaMovement.horizontalDistanceSqr() < 0.2D) {
+                    this.setDeltaMovement(0.0D, vec31.y, vec31.z);
+                }
+                if (pPos.z != vec3.z && deltaMovement.horizontalDistanceSqr() < 0.2D) {
+                    this.setDeltaMovement(vec31.x, vec31.y, 0.0D);
+                }
+
+                Block block = blockstate.getBlock();
+                if (pPos.y != vec3.y) {
+                    block.updateEntityAfterFallOn(this.level, this);
+                }
+
+                if (this.onGround && !this.isSteppingCarefully()) {
+                    block.stepOn(this.level, blockpos, blockstate, this);
+                }
+
+                Entity.MovementEmission entity$movementemission = this.getMovementEmission();
+                if (entity$movementemission.emitsAnything() && !this.isPassenger()) {
+                    double d0 = vec3.x;
+                    double d1 = vec3.y;
+                    double d2 = vec3.z;
+                    this.flyDist = (float) ((double) this.flyDist + vec3.length() * 0.6D);
+                    if (!blockstate.is(BlockTags.CLIMBABLE) && !blockstate.is(Blocks.POWDER_SNOW)) {
+                        d1 = 0.0D;
+                    }
+
+                    this.walkDist += (float) vec3.horizontalDistance() * 0.6F;
+                    this.moveDist += (float) Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2) * 0.6F;
+                    if (this.moveDist > this.nextStep && !blockstate.isAir()) {
+                        this.nextStep = this.nextStep();
+                        if (this.isInWater()) {
+                            if (entity$movementemission.emitsSounds()) {
+                                Entity entity = this.isVehicle() && this.getControllingPassenger() != null ? this.getControllingPassenger() : this;
+                                float f = entity == this ? 0.35F : 0.4F;
+                                Vec3 vec32 = entity.getDeltaMovement();
+                                float f1 = Math.min(1.0F, (float)Math.sqrt(vec32.x * vec32.x * (double)0.2F + vec32.y * vec32.y + vec32.z * vec32.z * (double)0.2F) * f);
+                                this.playSwimSound(f1);
+                            }
+
+                            if (entity$movementemission.emitsEvents()) {
+                                this.gameEvent(GameEvent.SWIM);
+                            }
+                        } else {
+                            if (entity$movementemission.emitsSounds()) {
+                                this.playAmethystStepSound(blockstate);
+                                this.playStepSound(blockpos, blockstate);
+                            }
+
+                            if (entity$movementemission.emitsEvents() && !blockstate.is(BlockTags.OCCLUDES_VIBRATION_SIGNALS)) {
+                                this.gameEvent(GameEvent.STEP);
+                            }
+                        }
+                    } else if (blockstate.isAir()) {
+                        this.processFlappingMovement();
+                    }
+                }
+
+                this.tryCheckInsideBlocks();
+                float f2 = this.getBlockSpeedFactor();
+                this.setDeltaMovement(this.getDeltaMovement().multiply((double) f2, 1.0D, (double) f2));
+            }
+            if (this.level.getBlockStatesIfLoaded(this.getBoundingBox().deflate(1.0E-6D)).noneMatch((p_20127_) -> p_20127_.is(BlockTags.FIRE) || p_20127_.is(Blocks.LAVA))) {
+                if (this.getRemainingFireTicks() <= 0) {
+                    this.setRemainingFireTicks(-this.getFireImmuneTicks());
+                }
+
+                if (this.wasOnFire && (this.isInPowderSnow || this.isInWaterRainOrBubble())) {
+                    this.playEntityOnFireExtinguishedSound();
+                }
+            }
+
+            if (this.isOnFire() && (this.isInPowderSnow || this.isInWaterRainOrBubble())) {
+                this.setRemainingFireTicks(-this.getFireImmuneTicks());
+            }
+
+            this.level.getProfiler().pop();
         }
     }
-    public void setIsStoppedByNaturalSlowdown(boolean bool) {
-        isStoppedByNaturalSlowdown = bool;
-        entityData.set(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, bool);
-    }
+
     @Override
     protected double getMaxSpeed() {
         return (isInWater() ? 4.0D : 8.0D) / 20.0D;
@@ -284,7 +365,6 @@ public class LocomotiveEntity extends AbstractCart {
         super.defineSynchedData();
 
         entityData.define(DATA_ID_FUEL, false);
-        entityData.define(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, false);
     }
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
@@ -301,14 +381,6 @@ public class LocomotiveEntity extends AbstractCart {
         xPush = compoundTag.getDouble("PushX");
         zPush = compoundTag.getDouble("PushZ");
         fuel = compoundTag.getShort("Fuel");
-    }
-    @Override
-    public void onSyncedDataUpdated(@NotNull EntityDataAccessor<?> data) {
-        if (DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN.equals(data)) {
-            isStoppedByNaturalSlowdown = (boolean)entityData.get(data);
-        }
-
-        super.onSyncedDataUpdated(data);
     }
 
     public boolean hasFuel() {

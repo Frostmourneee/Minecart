@@ -1,6 +1,6 @@
 package com.frostmourneee.minecart.common.entity;
 
-import com.frostmourneee.minecart.ccUtil;
+import com.frostmourneee.minecart.Util.ccUtil;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
@@ -32,7 +32,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.frostmourneee.minecart.ccUtil.*;
+import static com.frostmourneee.minecart.Util.ccUtil.*;
 import static com.frostmourneee.minecart.core.init.ccItemInit.LOCOMOTIVE_ITEM;
 import static com.frostmourneee.minecart.core.init.ccItemInit.WAGON_ITEM;
 
@@ -48,6 +48,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_CLAMPING = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FIRST_TIME_SPAWNED = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Boolean> DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<String> DATA_SERVER_POS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.STRING);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
@@ -56,13 +57,19 @@ public abstract class AbstractCart extends AbstractMinecart {
     public float horAngle = 0.0F; //USED ONLY IN RENDERER, HERE ALWAYS TRUE ONLY ON THE CLIENT
     public ArrayList<Float> alpha = new ArrayList<>();
 
+    /*
+     Needed only in clamp so calculated properly only if in clamp.
+     Equals true only if the cart has stopped by natural slowdown.
+     That means locomotive has no fuel and first cart has no visible movement.
+     */
+    public boolean isStoppedByNaturalSlowdown = false;
     public boolean isFindingBackCartAfterRejoin = false;
     public boolean isFindingFrontCartAfterRejoin = false;
     public boolean isClamping = false;
     public boolean isFirstTimeSpawned = false;
+    public int pushTick = 0;
 
     public boolean debugMode = false; //TODO remove
-    public int debugTick = 0; //TODO remove
 
     public AbstractCart backCart = null;
     public AbstractCart frontCart = null;
@@ -72,6 +79,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         vanillaTick();
 
         fieldsInitAndSidesSync();
+
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
         if (isClamping) clampingToFrontCart();
         collisionProcessing();
@@ -97,14 +105,9 @@ public abstract class AbstractCart extends AbstractMinecart {
                 double d7 = getZ() + (lz - getZ()) / (double)lSteps;
                 --lSteps;
 
-                if (isClamped()) {
-                    if (this instanceof LocomotiveEntity && !(deltaMovement.equals(Vec3.ZERO) && ((LocomotiveEntity)this).isStoppedByNaturalSlowdown)) {
-                        setPos(d5, d6, d7);
-                    }
-                    if (this instanceof WagonEntity && isClamping) {
-                        setPos(d5, d6, d7);
-                    }
-                } else setPos(d5, d6, d7);
+                if (!(deltaMovement.equals(Vec3.ZERO) && isStoppedByNaturalSlowdown)) {
+                    if (!hasFrontCart()) setPos(d5, d6, d7); //not clamped
+                }
             } else {
                 reapplyPosition();
             }
@@ -161,6 +164,7 @@ public abstract class AbstractCart extends AbstractMinecart {
          */
         delta = position().subtract(xOld, yOld, zOld);
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
+        if (pushTick != 0) pushTick--;
     }
     public void clampingToFrontCart() {
         ArrayList<AbstractCart> frontAbstractCart;
@@ -232,40 +236,34 @@ public abstract class AbstractCart extends AbstractMinecart {
             isClamping = false;
             if (level.isClientSide) setIsClamping(false);
         }
-
-        AbstractCart tmpCart = this;
-        while (tmpCart.hasBackCart()) {
-            tmpCart = tmpCart.backCart;
-            tmpCart.setPos(tmpCart.frontCart.position().add(tmpCart.frontCart.oppDirToVec3().scale(1.625D)));
-        }
-    }
-    public boolean isCommonActing() {
-        return !isFindingFrontCartAfterRejoin && !isFindingBackCartAfterRejoin && !isClamping;
-    }
-    /**
-     * @return true if a cart is in clamp and accelerates/slowdowns. Return false in other ways.
-     * zeroDeltaMovementHorizontal() should be used instead of zeroDeltaHorizontal() because on the client side
-     * delta equals Vec3.ZERO for the first ticks when cart accelerates.
-     */
-    public boolean isHorizontalAccelerationNotZeroInClamp() {
-        if (getLocomotive() == null) return false;
-
-        return (Math.abs(deltaMovement.horizontalDistance()) < 2.0D && !zeroDeltaMovementHorizontal());
     }
     public void clampingFail() {
         setDeltaMovement(getDeltaMovement().scale(0.2D));
         setIsClamping(false);
     }
+    public boolean isCommonActing() {
+        return !isFindingFrontCartAfterRejoin && !isFindingBackCartAfterRejoin && !isClamping;
+    }
 
     public void collisionProcessing() {
         AABB box;
-        if (getCollisionHandler() != null) box = getCollisionHandler().getMinecartCollisionBox(this);
-        else box = getBoundingBox().inflate(0.2D, 0.0D, 0.2D);
+        if (getCollisionHandler() != null) { //fake warning
+            box = getCollisionHandler().getMinecartCollisionBox(this);
+        } else {
+            box = getBoundingBox().inflate(0.2D, 0.0D, 0.2D);
+        }
 
+        //Every wagon whose squareDelta is faster than 0.01D
         if (canBeRidden() && deltaMovement.horizontalDistanceSqr() > 0.01D) {
             List<Entity> list = level.getEntities(this, box, EntitySelector.pushableBy(this));
             if (!list.isEmpty()) {
                 for (Entity entity1 : list) {
+                    if (isPushing(entity1, box)) {
+                        Vec3 pushDir = horVec(entity1.position()).subtract(horVec(position()));
+                        entity1.setDeltaMovement(pushDir.scale(1.2).add(0.0D, 0.4D, 0.0D));
+                        pushTick = 15;
+                    }
+
                     if (!(entity1 instanceof Player) && !(entity1 instanceof IronGolem) && !(entity1 instanceof AbstractMinecart) && !isVehicle() && !entity1.isPassenger()) {
                         entity1.startRiding(this);
                     } else {
@@ -273,12 +271,23 @@ public abstract class AbstractCart extends AbstractMinecart {
                     }
                 }
             }
-        } else {
-            for(Entity entity : level.getEntities(this, box)) {
-                if (!hasPassenger(entity) && entity.isPushable() && entity instanceof AbstractMinecart) {
-                    if (!entity.isPassengerOfSameVehicle(this)) {
-                        if (!entity.noPhysics && !noPhysics) {
-                            selfPushingByEntity(entity);
+        }
+        //Every non-rideable and slow (< 0.1D) rideables
+        else {
+            List<Entity> list = level.getEntities(this, box);
+            if (!list.isEmpty()) {
+                for (Entity entity : list) {
+                    if (isPushing(entity, box) || (this instanceof LocomotiveEntity && ((LocomotiveEntity) this).hasFuel() && !zeroDelta())) {
+                        Vec3 pushDir = horVec(entity.position()).subtract(horVec(position()));
+                        entity.setDeltaMovement(pushDir.scale(1.2).add(0.0D, 0.4D, 0.0D));
+                        pushTick = 15;
+                    }
+
+                    if (!hasPassenger(entity) && entity.isPushable() && entity instanceof AbstractMinecart) {
+                        if (!entity.isPassengerOfSameVehicle(this)) {
+                            if (!entity.noPhysics && !noPhysics) {
+                                selfPushingByEntity(entity);
+                            }
                         }
                     }
                 }
@@ -352,7 +361,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             switch (getCartType()) {
                 case WAGON -> {
                     if (!isVehicle() && !isClamped()) {
-                        push(d0 / 5, 0.0D, d1 / 5); //TODO change
+                        push(d0, 0.0D, d1); //TODO change
                     }
                 }
                 case LOCOMOTIVE -> {
@@ -395,16 +404,41 @@ public abstract class AbstractCart extends AbstractMinecart {
             setIsClamping(false);
         }
         if (!isClamped()) {
-            this.setDeltaMovement(this.getDeltaMovement().add(d1, d2, d3));
-            this.hasImpulse = true;
+            setDeltaMovement(getDeltaMovement().add(d1, d2, d3));
+            hasImpulse = true;
         }
     }
     @Override
+    public boolean isPushable() {
+        return !isClamped();
+    }
+    @Override
     public boolean canBeCollidedWith() {
-        return isClamped() && isAlive();
+        /*
+         * NearZero needed because if cart is moving then it pushes off any other entities
+         */
+        return isClamped() && (zeroDeltaMovement() || zeroDelta()) && isAlive();
+    }
+    @Override
+    public boolean canCollideWith(@NotNull Entity pEntity) {
+        return super.canCollideWith(pEntity) && deltaMovement.horizontalDistance() < 0.1D;
     }
     public boolean isClamped() {
         return hasFrontCart() || hasBackCart();
+    }
+    public boolean isPushing(Entity entity, AABB box) {
+        Vec3 pushDir = horVec(entity.position()).subtract(horVec(position()));
+        boolean bool = deltaMovement.horizontalDistance() > 0.1D && pushTick == 0 && !zeroDelta() && isCommonActing();
+
+        if (isClamped()) {
+            return bool;
+        } else if (nearZero(entity.deltaMovement.horizontalDistance(), ZERO_INDENT4)) {
+            return bool && isAngleAcute(pushDir, dirToVec3());
+        } else if (level.getEntities(this, box.deflate(0.25D, 0.0D, 0.25D)).contains(entity)) {
+            return bool && isAngleAcute(pushDir, dirToVec3()) && !isAngleAcute(dirToVec3(), horVec(entity.deltaMovement));
+        } else {
+            return bool && isAngleAcute(pushDir, dirToVec3()) && cosOfVecs(dirToVec3(), horVec(entity.deltaMovement)) < Math.sqrt(2) / 2;
+        }
     }
 
     public abstract AbstractCart.Type getCartType();
@@ -455,6 +489,64 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     public Vec3 oppDirToVec3() {
         return dirToVec3().reverse();
+    }
+    @Override
+    public void setDeltaMovement(@NotNull Vec3 vec) {
+        if (!hasBackCart()) {
+            if (horVec(vec).length() < 1.0E-10) {
+                deltaMovement = Vec3.ZERO;
+                return;
+            }
+            setIsStoppedByNaturalSlowdown(false);
+            deltaMovement = vec;
+
+            //Catches if cart has stopped by natural slowdown
+            if (deltaMovement.length() < ZERO_INDENT3 && !deltaMovement.equals(Vec3.ZERO)) {
+                deltaMovement = Vec3.ZERO;
+
+                setIsStoppedByNaturalSlowdown(true);
+                entityData.set(DATA_SERVER_POS, position().add(0.0D, 0.0625D, 0.0D).toString());
+                //0.0625D added because for some reason in this setDeltaMovement() pos.y == -60 instead of needed -59.9375
+            }
+            return;
+        }
+
+        //hasBackCart
+        if (getFirstCart().equals(this)) {
+            if (horVec(vec).length() < 1.0E-10) {
+                deltaMovement = Vec3.ZERO;
+                return;
+            }
+            setIsStoppedByNaturalSlowdown(false);
+            deltaMovement = horVec(vec);
+
+            //Catches if first cart has stopped by natural slowdown
+            if (deltaMovement.length() < ZERO_INDENT3 && !deltaMovement.equals(Vec3.ZERO)) {
+                deltaMovement = Vec3.ZERO;
+                setIsStoppedByNaturalSlowdown(true);
+
+                entityData.set(DATA_SERVER_POS, position().add(0.0D, 0.0625D, 0.0D).toString());
+                //0.0625D added because for some reason in this setDeltaMovement() pos.y == -60 instead of needed -59.9375
+
+                AbstractCart tmpCart = this;
+                while (tmpCart.hasBackCart()) {
+                    tmpCart = tmpCart.backCart;
+                    tmpCart.setDeltaMovement(Vec3.ZERO);
+                    tmpCart.getEntityData().set(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, true);
+                    tmpCart.getEntityData().set(DATA_SERVER_POS, tmpCart.position().toString());
+                }
+            }
+        }
+    }
+    /**
+     * @return true if a cart is in clamp and accelerates/slowdowns. Return false in other ways.
+     * zeroDeltaMovementHorizontal() should be used instead of zeroDeltaHorizontal() because on the client side
+     * delta equals Vec3.ZERO for the first ticks when cart accelerates.
+     */
+    public boolean isHorizontalAccelerationNotZeroInClamp() {
+        if (getLocomotive() == null) return false;
+
+        return (Math.abs(deltaMovement.horizontalDistance()) < 2.0D && !zeroDeltaMovementHorizontal());
     }
     @Override
     public Vec3 getPos(double x, double y, double z) { //Used in Renderer class
@@ -548,7 +640,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     }
     @Override
-    public void moveMinecartOnRail(BlockPos pos) { //Non-default because getMaximumSpeed is protected
+    public void moveMinecartOnRail(@NotNull BlockPos pos) { //Non-default because getMaximumSpeed is protected
         AbstractMinecart mc = this;
         double d24 = mc.isVehicle() && !isClamped() ? 0.75D : 1.0D;
         double d25 = mc.getMaxSpeedWithRail();
@@ -658,6 +750,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     } //in survival  //SERVER ONLY
     public void death() {
         if (backCart != null) {
+            backCart.setIsClamping(false);
             backCart.resetFront();
             resetBack();
         }
@@ -688,6 +781,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
         entityData.define(DATA_IS_CLAMPING, false);
         entityData.define(DATA_IS_FIRST_TIME_SPAWNED, false);
+        entityData.define(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, false);
         entityData.define(DATA_SERVER_POS, "(0, 0, 0)");
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
@@ -713,7 +807,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                         new BlockPos(position()).relative(getDirection().getOpposite()).relative(getDirection().getClockWise()),
                         new BlockPos(position()).relative(getDirection().getOpposite(), 2).relative(getDirection().getCounterClockWise()))
                 );
-                if (potentialBackCart != null) {
+                if (potentialBackCart != null && !potentialBackCart.isClamping) {
                     connectBack(potentialBackCart);
                     potentialBackCart.connectFront(this);
                 }
@@ -721,6 +815,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 backCart = null;
             }
         }
+
         if (DATA_FRONTCART_EXISTS.equals(data) && isCommonActing()) {
             if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side
                 AbstractCart potentialFrontCart = findingNearestCartInArea(getAABBBetweenBlocks(
@@ -747,6 +842,9 @@ public abstract class AbstractCart extends AbstractMinecart {
                     setPos(pos);
                 }
             }
+        }
+        if (DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN.equals(data)) {
+            isStoppedByNaturalSlowdown = (boolean)entityData.get(data);
         }
 
         if (DATA_DEBUG_MODE.equals(data)) {
@@ -781,8 +879,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     } //SERVER ONLY
 
     public void restoreRelativeCarts() {
-        if (backCart != null) isFindingBackCartAfterRejoin = false;
-        if (frontCart != null) isFindingFrontCartAfterRejoin = false;
+        if (hasBackCart()) isFindingBackCartAfterRejoin = false;
+        if (hasFrontCart()) isFindingFrontCartAfterRejoin = false;
         if (backCart == null && isFindingBackCartAfterRejoin) {
             AbstractCart potentialBackCart = findingNearestCartInArea(getAABBBetweenBlocks(
                     new BlockPos(position()).relative(getDirection().getOpposite()).relative(getDirection().getClockWise()),
@@ -837,6 +935,13 @@ public abstract class AbstractCart extends AbstractMinecart {
         } else {
             return null;
         }
+    }
+    public AbstractCart getFirstCart() {
+        AbstractCart cart = this;
+        while (cart.frontCart != null) {
+            cart = cart.frontCart;
+        }
+        return cart;
     }
     public AbstractCart getFirstWagonCart() {
         AbstractCart cart = this;
@@ -910,24 +1015,24 @@ public abstract class AbstractCart extends AbstractMinecart {
                     (goesFlat() && frontCart.goesFlat());
     }
     public boolean isOnHorizontalLine(AbstractCart cart) {
-        if (cart != null) return Math.abs(getY() - cart.getY()) < ZERO_INDENT &&
-                (Math.abs(getX() - cart.getX()) < ZERO_INDENT || Math.abs(getZ() - cart.getZ()) < ZERO_INDENT);
+        if (cart != null) return Math.abs(getY() - cart.getY()) < ZERO_INDENT4 &&
+                (Math.abs(getX() - cart.getX()) < ZERO_INDENT4 || Math.abs(getZ() - cart.getZ()) < ZERO_INDENT4);
         else return false;
     }
 
     public boolean zeroDelta() {
-        return nearZero(delta, ZERO_INDENT);
+        return nearZero(delta, ZERO_INDENT4);
     }
     public boolean zeroDeltaBigIndent() {
         return nearZero(delta, 5.0E-2);
     }
     public boolean zeroDeltaHorizontal() {
-        return nearZero(delta.subtract(0.0D, delta.y, 0.0D), 1.0E-3);
+        return nearZero(horVec(delta), ZERO_INDENT4);
     }
     public boolean zeroDeltaMovement() {
-        return nearZero(deltaMovement, 1.0E-3); }
+        return nearZero(deltaMovement, ZERO_INDENT4); }
     public boolean zeroDeltaMovementHorizontal() {
-        return nearZero(deltaMovement.subtract(0.0D, deltaMovement.y, 0.0D), 1.0E-3); }
+        return nearZero(horVec(deltaMovement), ZERO_INDENT4); }
     public boolean isStopped() {
         return delta.equals(Vec3.ZERO);
     }
@@ -963,12 +1068,10 @@ public abstract class AbstractCart extends AbstractMinecart {
     } //Make sure you setHasFrontCart to true only if frontCart != null
     public void setIsFirstTimeSpawned(boolean bool) {
         entityData.set(DATA_IS_FIRST_TIME_SPAWNED, bool);
-    } //
-    public boolean hasBackCart() {
-        return backCart != null;
     }
-    public boolean hasFrontCart() {
-        return frontCart != null;
+    public void setIsStoppedByNaturalSlowdown(boolean bool) {
+        isStoppedByNaturalSlowdown = bool;
+        entityData.set(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, bool);
     }
     public void setDebugMode(boolean bool) {
         debugMode = bool;
@@ -978,9 +1081,15 @@ public abstract class AbstractCart extends AbstractMinecart {
         isClamping = bool;
         entityData.set(DATA_IS_CLAMPING, bool);
     } //Need to send updated info to server and then to all players (clients) on the server via onSyncedDataUpdated()
+    public boolean hasBackCart() {
+        return backCart != null;
+    }
+    public boolean hasFrontCart() {
+        return frontCart != null;
+    }
 
     public boolean readyAfterRejoin() {
-        return tickCount > 7;
+        return tickCount > 9;
     }
 
     /**

@@ -1,8 +1,7 @@
 package com.frostmourneee.minecart.client.renderer;
 
-import com.frostmourneee.minecart.ccUtil;
+import com.frostmourneee.minecart.Util.ccUtil;
 import com.frostmourneee.minecart.common.entity.AbstractCart;
-import com.frostmourneee.minecart.common.entity.WagonEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Vector3f;
 import net.minecraft.client.renderer.MultiBufferSource;
