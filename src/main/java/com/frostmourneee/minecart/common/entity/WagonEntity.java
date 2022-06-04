@@ -3,7 +3,6 @@ package com.frostmourneee.minecart.common.entity;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -18,8 +17,6 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-
-import static com.frostmourneee.minecart.ccUtil.customPrint;
 
 
 public class WagonEntity extends AbstractCart {
@@ -52,6 +49,7 @@ public class WagonEntity extends AbstractCart {
         if (canBeClamped(itemStack)) {
             if (hasFrontCart()) {
                 cartSound(ccSoundInit.CART_UNCLAMP.get());
+                setIsClamping(false);
                 frontCart.resetBack();
                 resetFront();
             } else {
@@ -85,11 +83,10 @@ public class WagonEntity extends AbstractCart {
     public void setDeltaMovement(@NotNull Vec3 vec) {
         if (hasFrontCart()) {
             deltaMovement = frontCart.deltaMovement;
-        } else deltaMovement = vec;
-
-        if (deltaMovement.length() < 1.3E-4) {
-            deltaMovement = Vec3.ZERO;
+            return;
         }
+
+        super.setDeltaMovement(vec);
     }
 
     public void spawnAfterCartLeaving() {

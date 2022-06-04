@@ -35,7 +35,7 @@ public class LocomotiveItem extends AbstractCartItem {
     }
 
     @Override
-    public AbstractCartItem.Type getItemType() {
+    public Type getItemType() {
         return Type.LOCOMOTIVE;
     }
 }
