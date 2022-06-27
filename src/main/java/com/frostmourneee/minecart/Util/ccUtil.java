@@ -6,6 +6,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.phys.AABB;
@@ -49,6 +50,9 @@ public class ccUtil {
     }
     public static Vec3 horVec(Vec3 a) {
         return new Vec3(a.x, 0.0D, a.z);
+    }
+    public static Vec3 vec3iToVec3(Vec3i vec3i) {
+        return new Vec3(vec3i.getX(), vec3i.getY(), vec3i.getZ());
     }
     public static double cosOfVecs(Vec3 a, Vec3 b) {
         if (nearZero(a, ZERO_INDENT4) || nearZero(b, ZERO_INDENT4)) return 1.0D;

@@ -130,4 +130,8 @@ public class WagonEntity extends AbstractCart {
     public AbstractCart.Type getCartType() {
         return Type.WAGON;
     }
+    @Override
+    public ItemStack getCartItem() {
+        return new ItemStack(ccItemInit.WAGON_ITEM.get());
+    }
 }

@@ -4,6 +4,7 @@ import com.frostmourneee.minecart.Util.ccUtil;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -11,7 +12,6 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
@@ -31,8 +31,6 @@ import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.world.NoteBlockEvent;
-import org.antlr.v4.codegen.model.Sync;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -92,7 +90,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         fieldsInitAndSidesSync();
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
         if (isClamping && readyAfterRejoin()) clampingToFrontCart();
-        if (repelTick == 6 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) {
+        if (repelTick == 10 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) {
             repel();
         }
         collisionProcessing();
@@ -280,7 +278,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                             entityToBeRepelled = lEntity1;
                             repelDir = pushDir;
                             entityData.set(DATA_REPEL_ENTITY_ID, entityToBeRepelled.getId());
-                            entityData.set(DATA_REPEL_TICK, 10);
+                            entityData.set(DATA_REPEL_TICK, 15);
                         }
                     }
 
@@ -303,7 +301,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                             entityToBeRepelled = lEntity;
                             repelDir = pushDir;
                             entityData.set(DATA_REPEL_ENTITY_ID, entityToBeRepelled.getId());
-                            entityData.set(DATA_REPEL_TICK, 10);
+                            entityData.set(DATA_REPEL_TICK, 15);
                         }
                     }
 
@@ -391,29 +389,15 @@ public abstract class AbstractCart extends AbstractMinecart {
                 case LOCOMOTIVE -> {
                     if (entity instanceof AbstractCart) {
                         if (!zeroDeltaBigIndent() && ((AbstractCart) entity).zeroDeltaBigIndent()) {
-                            if (hasBackCart()) {
-                                backCart.resetFront();
-                                resetBack();
+                            if (((AbstractCart) entity).hasBackCart()) {
+                                ((AbstractCart) entity).backCart.resetFront();
+                                ((AbstractCart) entity).resetBack();
                             }
 
                             cartSound(ccSoundInit.CART_DEATH.get());
-                            remove(RemovalReason.KILLED);
+                            entity.remove(RemovalReason.KILLED);
                             if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                                spawnAtLocation(LOCOMOTIVE_ITEM.get());
-                            }
-                        }
-                    }
-                    else {
-                        if (!zeroDeltaBigIndent() && nearZero(entity.deltaMovement, 5.0E-1)) {
-                            if (hasBackCart()) {
-                                backCart.resetFront();
-                                resetFront();
-                            }
-
-                            cartSound(ccSoundInit.CART_DEATH.get());
-                            remove(RemovalReason.KILLED);
-                            if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                                spawnAtLocation(LOCOMOTIVE_ITEM.get());
+                                spawnAtLocation(((AbstractCart) entity).getCartItem());
                             }
                         }
                     }
@@ -466,7 +450,14 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     }
     public void repel() {
-        entityToBeRepelled.setDeltaMovement(repelDir.add(0.0F, 0.3F, 0.0F));
+        Vec3 tmp = getDirection().equals(Direction.WEST) || getDirection().equals(Direction.SOUTH) ?
+                vec3iToVec3(getDirection().getCounterClockWise().getNormal()) : vec3iToVec3(getDirection().getClockWise().getNormal());
+        Vec3 projection = new Vec3(repelDir.x * tmp.x, repelDir.y * tmp.y, repelDir.z * tmp.z);
+        if (projection.length() < ZERO_INDENT3) {
+            projection = random.nextInt(2) == 0 ? tmp : tmp.reverse();
+        }
+        Vec3 projectionTenthed = projection.normalize().scale(0.1F);
+        entityToBeRepelled.setDeltaMovement(repelDir.add(projectionTenthed).add(0.0F, 0.3F, 0.0F));
 
         if (!level.isClientSide) {
             entityToBeRepelled.animateHurt();
