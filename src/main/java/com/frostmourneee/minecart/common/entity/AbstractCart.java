@@ -31,6 +31,7 @@ import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.antlr.v4.codegen.model.Sync;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -53,11 +54,14 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_IS_CLAMPING = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_FIRST_TIME_SPAWNED = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Integer> DATA_REPEL_TICK = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> DATA_REPEL_ENTITY_ID = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<String> DATA_SERVER_POS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.STRING);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
 
     public Vec3 delta = Vec3.ZERO;
+    public Vec3 repelDir = null;
     public float horAngle = 0.0F; //USED ONLY IN RENDERER, HERE ALWAYS TRUE ONLY ON THE CLIENT
     public ArrayList<Float> alpha = new ArrayList<>();
 
@@ -71,12 +75,14 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isFindingFrontCartAfterRejoin = false;
     public boolean isClamping = false;
     public boolean isFirstTimeSpawned = false;
-    public int pushTick = 0;
+    public int repelTick = 0;
+    public int repelEntityId = 0;
 
     public boolean debugMode = false; //TODO remove
 
     public AbstractCart backCart = null;
     public AbstractCart frontCart = null;
+    public LivingEntity entityToBeRepelled = null;
 
     @Override
     public void tick() {
@@ -84,7 +90,10 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         fieldsInitAndSidesSync();
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
-        if (isClamping) clampingToFrontCart();
+        if (isClamping && readyAfterRejoin()) clampingToFrontCart();
+        if (repelTick == 6 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) {
+            repel();
+        }
         collisionProcessing();
     }
 
@@ -167,7 +176,10 @@ public abstract class AbstractCart extends AbstractMinecart {
          */
         delta = position().subtract(xOld, yOld, zOld);
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
-        if (pushTick != 0) pushTick--;
+        if (repelTick != 0) {
+            repelTick--;
+            if (repelTick == 0) entityData.set(DATA_REPEL_TICK, 0);
+        }
     }
     public void clampingToFrontCart() {
         ArrayList<AbstractCart> frontAbstractCart;
@@ -263,7 +275,12 @@ public abstract class AbstractCart extends AbstractMinecart {
                 for (Entity entity1 : list) {
                     if (entity1 instanceof LivingEntity lEntity1) {
                         Vec3 pushDir = horVec(lEntity1.position()).subtract(horVec(position()));
-                        repellingFunction(lEntity1, box, pushDir);
+                        if (!level.isClientSide && isPushing(lEntity1, box, pushDir)) {
+                            entityToBeRepelled = lEntity1;
+                            repelDir = pushDir;
+                            entityData.set(DATA_REPEL_ENTITY_ID, entityToBeRepelled.getId());
+                            entityData.set(DATA_REPEL_TICK, 10);
+                        }
                     }
 
                     if (!(entity1 instanceof Player) && !(entity1 instanceof IronGolem) && !(entity1 instanceof AbstractMinecart) && !isVehicle() && !entity1.isPassenger()) {
@@ -281,7 +298,12 @@ public abstract class AbstractCart extends AbstractMinecart {
                 for (Entity entity : list) {
                     if (entity instanceof LivingEntity lEntity) {
                         Vec3 pushDir = horVec(lEntity.position()).subtract(horVec(position()));
-                        repellingFunction(lEntity, box, pushDir);
+                        if (!level.isClientSide && isPushing(lEntity, box, pushDir)) {
+                            entityToBeRepelled = lEntity;
+                            repelDir = pushDir;
+                            entityData.set(DATA_REPEL_ENTITY_ID, entityToBeRepelled.getId());
+                            entityData.set(DATA_REPEL_TICK, 10);
+                        }
                     }
 
                     if (!hasPassenger(entity) && entity.isPushable() && entity instanceof AbstractMinecart) {
@@ -429,7 +451,8 @@ public abstract class AbstractCart extends AbstractMinecart {
         return hasFrontCart() || hasBackCart();
     }
     public boolean isPushing(Entity entity, AABB box, Vec3 pushDir) {
-        boolean result = deltaMovement.horizontalDistance() > 0.1D && pushTick == 0 && !zeroDelta() && isCommonActing();
+        boolean result = deltaMovement.horizontalDistance() > 0.1D &&
+                repelTick == 0 && !zeroDelta() && isCommonActing() && !(!(this instanceof LocomotiveEntity) && !isClamped());
 
         if (isClamped()) {
             return result;
@@ -441,30 +464,28 @@ public abstract class AbstractCart extends AbstractMinecart {
             return result && isAngleAcute(pushDir, dirToVec3()) && cosOfVecs(dirToVec3(), horVec(entity.deltaMovement)) < Math.sqrt(2) / 2;
         }
     }
-    public void repellingFunction(LivingEntity entity, AABB box, Vec3 pushDir) {
-        if (isPushing(entity, box, pushDir) && !(!(this instanceof LocomotiveEntity) && !isClamped())) {
-            entity.setDeltaMovement(pushDir.scale(1.5F).add(0.0F, 0.4F, 0.0F));
+    public void repel() {
+        entityToBeRepelled.setDeltaMovement(repelDir.add(0.0F, 0.3F, 0.0F));
 
-            if (!level.isClientSide) {
-                entity.animateHurt();
+        if (!level.isClientSide) {
+            entityToBeRepelled.animateHurt();
 
-                float damagedHealth;
-                if (entity.getMaxHealth() > 6.0F && entity.getMaxHealth() <= 12.0F && entity.getHealth() == entity.getMaxHealth()) damagedHealth = entity.getMaxHealth() / 2.0F;
-                else damagedHealth = entity.getHealth() - 12.0F;
+            float damagedHealth;
+            if (entityToBeRepelled.getMaxHealth() > 6.0F && entityToBeRepelled.getMaxHealth() <= 12.0F && entityToBeRepelled.getHealth() == entityToBeRepelled.getMaxHealth()) damagedHealth = entityToBeRepelled.getMaxHealth() / 2.0F;
+            else damagedHealth = entityToBeRepelled.getHealth() - 12.0F;
 
-                if (entity instanceof Silverfish || entity instanceof Endermite) damagedHealth = 0.0F;
+            if (entityToBeRepelled instanceof Silverfish || entityToBeRepelled instanceof Endermite) damagedHealth = 0.0F;
 
-                entity.setHealth(damagedHealth);
+            entityToBeRepelled.setHealth(damagedHealth);
+
+            if (entityToBeRepelled.isDeadOrDying()) {
+                entityToBeRepelled.lastHurtByPlayerTime = 1;
+                entityToBeRepelled.dropAllDeathLoot(DamageSource.FALL);
             }
-
-            if (entity.isDeadOrDying()) {
-                entity.lastHurtByPlayerTime = 1;
-                entity.dropAllDeathLoot(DamageSource.FALL);
-            }
-            cartSound(SoundEvents.PLAYER_HURT);
-            entity.gameEvent(GameEvent.ENTITY_DAMAGED, this);
-            pushTick = 15;
         }
+
+        cartSound(SoundEvents.PLAYER_HURT);
+        entityToBeRepelled.gameEvent(GameEvent.ENTITY_DAMAGED, this);
     }
 
     public abstract AbstractCart.Type getCartType();
@@ -563,16 +584,6 @@ public abstract class AbstractCart extends AbstractMinecart {
                 }
             }
         }
-    }
-    /**
-     * @return true if a cart is in clamp and accelerates/slowdowns. Return false in other ways.
-     * zeroDeltaMovementHorizontal() should be used instead of zeroDeltaHorizontal() because on the client side
-     * delta equals Vec3.ZERO for the first ticks when cart accelerates.
-     */
-    public boolean isHorizontalAccelerationNotZeroInClamp() {
-        if (getLocomotive() == null) return false;
-
-        return (Math.abs(deltaMovement.horizontalDistance()) < 2.0D && !zeroDeltaMovementHorizontal());
     }
     @Override
     public Vec3 getPos(double x, double y, double z) { //Used in Renderer class
@@ -808,6 +819,8 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_IS_CLAMPING, false);
         entityData.define(DATA_IS_FIRST_TIME_SPAWNED, false);
         entityData.define(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, false);
+        entityData.define(DATA_REPEL_TICK, 0);
+        entityData.define(DATA_REPEL_ENTITY_ID, 0);
         entityData.define(DATA_SERVER_POS, "(0, 0, 0)");
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
@@ -825,6 +838,17 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         if (DATA_IS_FIRST_TIME_SPAWNED.equals(data)) {
             isFirstTimeSpawned = (boolean)entityData.get(data);
+        }
+
+        if (DATA_REPEL_ENTITY_ID.equals(data)) {
+            repelEntityId = (int)entityData.get(data);
+        }
+        if (DATA_REPEL_TICK.equals(data)) {
+            repelTick = (int)entityData.get(data);
+            if (level.isClientSide) {
+                entityToBeRepelled = (LivingEntity)level.getEntity(repelEntityId);
+                if (entityToBeRepelled != null) repelDir = horVec(entityToBeRepelled.position()).subtract(horVec(position()));
+            }
         }
 
         if (DATA_BACKCART_EXISTS.equals(data) && isCommonActing()) {
