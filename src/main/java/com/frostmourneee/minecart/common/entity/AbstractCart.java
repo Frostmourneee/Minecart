@@ -10,12 +10,15 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.entity.monster.Endermite;
+import net.minecraft.world.entity.monster.Silverfish;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.item.ItemStack;
@@ -25,6 +28,7 @@ import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.PoweredRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
@@ -79,7 +83,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         vanillaTick();
 
         fieldsInitAndSidesSync();
-
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
         if (isClamping) clampingToFrontCart();
         collisionProcessing();
@@ -258,10 +261,9 @@ public abstract class AbstractCart extends AbstractMinecart {
             List<Entity> list = level.getEntities(this, box, EntitySelector.pushableBy(this));
             if (!list.isEmpty()) {
                 for (Entity entity1 : list) {
-                    if (isPushing(entity1, box)) {
-                        Vec3 pushDir = horVec(entity1.position()).subtract(horVec(position()));
-                        entity1.setDeltaMovement(pushDir.scale(1.2).add(0.0D, 0.4D, 0.0D));
-                        pushTick = 15;
+                    if (entity1 instanceof LivingEntity lEntity1) {
+                        Vec3 pushDir = horVec(lEntity1.position()).subtract(horVec(position()));
+                        repellingFunction(lEntity1, box, pushDir);
                     }
 
                     if (!(entity1 instanceof Player) && !(entity1 instanceof IronGolem) && !(entity1 instanceof AbstractMinecart) && !isVehicle() && !entity1.isPassenger()) {
@@ -277,10 +279,9 @@ public abstract class AbstractCart extends AbstractMinecart {
             List<Entity> list = level.getEntities(this, box);
             if (!list.isEmpty()) {
                 for (Entity entity : list) {
-                    if (isPushing(entity, box) || (this instanceof LocomotiveEntity && ((LocomotiveEntity) this).hasFuel() && !zeroDelta())) {
-                        Vec3 pushDir = horVec(entity.position()).subtract(horVec(position()));
-                        entity.setDeltaMovement(pushDir.scale(1.2).add(0.0D, 0.4D, 0.0D));
-                        pushTick = 15;
+                    if (entity instanceof LivingEntity lEntity) {
+                        Vec3 pushDir = horVec(lEntity.position()).subtract(horVec(position()));
+                        repellingFunction(lEntity, box, pushDir);
                     }
 
                     if (!hasPassenger(entity) && entity.isPushable() && entity instanceof AbstractMinecart) {
@@ -417,7 +418,8 @@ public abstract class AbstractCart extends AbstractMinecart {
         /*
          * NearZero needed because if cart is moving then it pushes off any other entities
          */
-        return isClamped() && (zeroDeltaMovement() || zeroDelta()) && isAlive();
+        if (isClamped()) return (zeroDelta() || deltaMovement.horizontalDistance() < 0.1D) && isAlive();
+        else return this instanceof LocomotiveEntity && ((LocomotiveEntity) this).hasFuel() && (zeroDeltaMovement() || zeroDelta()) && isAlive();
     }
     @Override
     public boolean canCollideWith(@NotNull Entity pEntity) {
@@ -426,18 +428,42 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isClamped() {
         return hasFrontCart() || hasBackCart();
     }
-    public boolean isPushing(Entity entity, AABB box) {
-        Vec3 pushDir = horVec(entity.position()).subtract(horVec(position()));
-        boolean bool = deltaMovement.horizontalDistance() > 0.1D && pushTick == 0 && !zeroDelta() && isCommonActing();
+    public boolean isPushing(Entity entity, AABB box, Vec3 pushDir) {
+        boolean result = deltaMovement.horizontalDistance() > 0.1D && pushTick == 0 && !zeroDelta() && isCommonActing();
 
         if (isClamped()) {
-            return bool;
+            return result;
         } else if (nearZero(entity.deltaMovement.horizontalDistance(), ZERO_INDENT4)) {
-            return bool && isAngleAcute(pushDir, dirToVec3());
+            return result && isAngleAcute(pushDir, dirToVec3());
         } else if (level.getEntities(this, box.deflate(0.25D, 0.0D, 0.25D)).contains(entity)) {
-            return bool && isAngleAcute(pushDir, dirToVec3()) && !isAngleAcute(dirToVec3(), horVec(entity.deltaMovement));
+            return result && isAngleAcute(pushDir, dirToVec3()) && !isAngleAcute(dirToVec3(), horVec(entity.deltaMovement));
         } else {
-            return bool && isAngleAcute(pushDir, dirToVec3()) && cosOfVecs(dirToVec3(), horVec(entity.deltaMovement)) < Math.sqrt(2) / 2;
+            return result && isAngleAcute(pushDir, dirToVec3()) && cosOfVecs(dirToVec3(), horVec(entity.deltaMovement)) < Math.sqrt(2) / 2;
+        }
+    }
+    public void repellingFunction(LivingEntity entity, AABB box, Vec3 pushDir) {
+        if (isPushing(entity, box, pushDir) && !(!(this instanceof LocomotiveEntity) && !isClamped())) {
+            entity.setDeltaMovement(pushDir.scale(1.5F).add(0.0F, 0.4F, 0.0F));
+
+            if (!level.isClientSide) {
+                entity.animateHurt();
+
+                float damagedHealth;
+                if (entity.getMaxHealth() > 6.0F && entity.getMaxHealth() <= 12.0F && entity.getHealth() == entity.getMaxHealth()) damagedHealth = entity.getMaxHealth() / 2.0F;
+                else damagedHealth = entity.getHealth() - 12.0F;
+
+                if (entity instanceof Silverfish || entity instanceof Endermite) damagedHealth = 0.0F;
+
+                entity.setHealth(damagedHealth);
+            }
+
+            if (entity.isDeadOrDying()) {
+                entity.lastHurtByPlayerTime = 1;
+                entity.dropAllDeathLoot(DamageSource.FALL);
+            }
+            cartSound(SoundEvents.PLAYER_HURT);
+            entity.gameEvent(GameEvent.ENTITY_DAMAGED, this);
+            pushTick = 15;
         }
     }
 
@@ -512,7 +538,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
 
         //hasBackCart
-        if (getFirstCart().equals(this)) {
+        if (isFirstCart()) {
             if (horVec(vec).length() < 1.0E-10) {
                 deltaMovement = Vec3.ZERO;
                 return;
@@ -943,6 +969,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         return cart;
     }
+    public boolean isFirstCart() {
+        return getFirstCart().equals(this);
+    }
     public AbstractCart getFirstWagonCart() {
         AbstractCart cart = this;
         while (cart.frontCart != null) {
@@ -1098,7 +1127,7 @@ public abstract class AbstractCart extends AbstractMinecart {
      * @param soundEvent - sound to be played
      */
     public void cartSound(SoundEvent soundEvent) {
-        level.playSound(null, new BlockPos(position()), soundEvent, SoundSource.NEUTRAL, 1.0F, 1.0F);
+        level.playSound(null, getX(), getY(), getZ(), soundEvent, getSoundSource(), 1.0F, 1.0F);
     }
 
     public enum Type {
