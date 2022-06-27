@@ -31,6 +31,7 @@ import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.event.world.NoteBlockEvent;
 import org.antlr.v4.codegen.model.Sync;
 import org.jetbrains.annotations.NotNull;
 
@@ -454,7 +455,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         boolean result = deltaMovement.horizontalDistance() > 0.1D &&
                 repelTick == 0 && !zeroDelta() && isCommonActing() && !(!(this instanceof LocomotiveEntity) && !isClamped());
 
-        if (isClamped()) {
+        if (isClamped() || !(entity instanceof Player)) {
             return result;
         } else if (nearZero(entity.deltaMovement.horizontalDistance(), ZERO_INDENT4)) {
             return result && isAngleAcute(pushDir, dirToVec3());
