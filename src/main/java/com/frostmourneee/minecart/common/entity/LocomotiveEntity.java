@@ -1,6 +1,7 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.minecart.Util.ccUtil;
+import com.frostmourneee.minecart.common.item.WagonItem;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;
@@ -411,5 +412,10 @@ public class LocomotiveEntity extends AbstractCart {
     @Override
     public BlockState getDefaultDisplayBlockState() {
         return Blocks.FURNACE.defaultBlockState().setValue(FurnaceBlock.FACING, Direction.NORTH).setValue(FurnaceBlock.LIT, hasFuel());
+    }
+
+    @Override
+    public ItemStack getCartItem() {
+        return new ItemStack(ccItemInit.LOCOMOTIVE_ITEM.get());
     }
 }
