@@ -531,7 +531,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     }
     public void backCartPosCorrectionToThis() {
-        if (isOnHorizontalLine(backCart) && isCommonActing()) {
+        if (isOnHorizontalLine(backCart) && backCart.isCommonActing()) {
             backCart.setPos(position().add(oppDirToVec3().scale(1.625D)));
         }
     }

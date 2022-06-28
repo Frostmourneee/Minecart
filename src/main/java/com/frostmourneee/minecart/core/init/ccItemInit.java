@@ -20,10 +20,10 @@ public final class ccItemInit {
             () -> new BlockItem(ccBlockInit.OBSIDIANNEW.get(), new Item.Properties().tab(CreativeModeTab.TAB_BUILDING_BLOCKS).fireResistant()));
 
     public static final RegistryObject<LocomotiveItem> LOCOMOTIVE_ITEM = ITEMS.register("locomotive",
-            () -> new LocomotiveItem(new Item.Properties().tab(CreativeModeTab.TAB_TRANSPORTATION).stacksTo(1)));
+            () -> new LocomotiveItem(new Item.Properties().tab(CreativeModeTab.TAB_TRANSPORTATION).stacksTo(64)));
 
     public static final RegistryObject<WagonItem> WAGON_ITEM = ITEMS.register("wagon",
-            () -> new WagonItem(new Item.Properties().tab(CreativeModeTab.TAB_TRANSPORTATION).stacksTo(1)));
+            () -> new WagonItem(new Item.Properties().tab(CreativeModeTab.TAB_TRANSPORTATION).stacksTo(64)));
 
     public static final RegistryObject<ClampItem> CLAMP = ITEMS.register("clamp",
             () -> new ClampItem(new Item.Properties().tab(CreativeModeTab.TAB_TRANSPORTATION).stacksTo(1)));
