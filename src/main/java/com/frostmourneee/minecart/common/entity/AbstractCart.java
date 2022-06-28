@@ -92,9 +92,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         fieldsInitAndSidesSync();
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreRelativeCarts();
         if (isClamping && readyAfterRejoin()) clampingToFrontCart();
-        if (repelTick == 10 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) {
-            repel();
-        }
+        if (repelTick == 10 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) repel();
         collisionProcessing();
     }
 
@@ -185,7 +183,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 entityToBeRepelled = null;
             }
         }
-        if (!getFirstCart().equals(this)) repellingEntities.clear();
+        if (!isFirstCart()) repellingEntities.clear();
     }
     public void clampingToFrontCart() {
         ArrayList<AbstractCart> frontAbstractCart;
@@ -225,7 +223,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
 
         smoothClampingFunction(potentialFrontCart);
-    } //ONLY WITHOUT REJOIN
+    }
     public void smoothClampingFunction(AbstractCart potentialFrontCart) {
         double dist = distanceTo(potentialFrontCart);
         if (dist > 3.5D) {
@@ -475,8 +473,8 @@ public abstract class AbstractCart extends AbstractMinecart {
             float damagedHealth;
             if (entityToBeRepelled.getMaxHealth() > 6.0F && entityToBeRepelled.getMaxHealth() <= 12.0F &&
                 entityToBeRepelled.getHealth() == entityToBeRepelled.getMaxHealth()) {
-                damagedHealth = entityToBeRepelled.getMaxHealth() - 1.0F;
-            } else damagedHealth = entityToBeRepelled.getHealth() - 1.0F;
+                damagedHealth = entityToBeRepelled.getMaxHealth() / 2.0F;
+            } else damagedHealth = entityToBeRepelled.getHealth() - 12.0F;
 
             if (entityToBeRepelled instanceof Silverfish || entityToBeRepelled instanceof Endermite) damagedHealth = 0.0F;
 
@@ -565,6 +563,9 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //hasBackCart
         if (isFirstCart()) {
+            if (hasBackCart() && getFirstPassenger() != null &&
+                cosOfVecs(horVec(getFirstPassenger().deltaMovement), horVec(position().subtract(backCart.position()))) <= 0 &&
+                deltaMovement.length() < 2.0E-3) return;
             if (horVec(vec).length() < 1.0E-10) {
                 deltaMovement = Vec3.ZERO;
                 return;
@@ -747,7 +748,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
 
         setDeltaMovement(Vec3.ZERO);
-        potentialFrontCart.setDeltaMovement(Vec3.ZERO);
+        potentialFrontCart.setDeltaMovement(potentialFrontCart.deltaMovement.scale(0.1F));
+        potentialFrontCart.setIsStoppedByNaturalSlowdown(true);
+        potentialFrontCart.entityData.set(DATA_SERVER_POS, potentialFrontCart.position().toString());
 
         if (distanceTo(potentialFrontCart) > 1.625D) setIsClamping(true);
         else if (distanceTo(potentialFrontCart) == 1.625D || !hasBackCart()) {
@@ -885,7 +888,9 @@ public abstract class AbstractCart extends AbstractMinecart {
                 frontCart = null;
             }
         }
-
+        if (DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN.equals(data)) {
+            isStoppedByNaturalSlowdown = (boolean)entityData.get(data);
+        }
         if (DATA_SERVER_POS.equals(data) && readyAfterRejoin()) {
             if (level.isClientSide) {
                 ArrayList<Double> posArray = new ArrayList<>();
@@ -893,13 +898,10 @@ public abstract class AbstractCart extends AbstractMinecart {
                     posArray.add(Double.parseDouble(str));
 
                 Vec3 pos = new Vec3(posArray.get(0), posArray.get(1), posArray.get(2));
-                if (nearZero(pos.subtract(0.0D, pos.y, 0.0D).subtract(position().subtract(0.0D, position().y, 0.0D)), 5.0E-2)) {
+                if (nearZero(horVec(pos).subtract(horVec(position())), 5.0E-2)) {
                     setPos(pos);
                 }
             }
-        }
-        if (DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN.equals(data)) {
-            isStoppedByNaturalSlowdown = (boolean)entityData.get(data);
         }
 
         if (DATA_DEBUG_MODE.equals(data)) {

@@ -96,13 +96,13 @@ public class ccUtil {
         ArrayList<BlockPos> result = new ArrayList<>();
 
         if (pos1 != pos2) {
-            int dx = pos1.getX() - pos2.getX(); //3
-            int dy = pos1.getY() - pos2.getY(); //0
-            int dz = pos1.getZ() - pos2.getZ(); //0
+            int dx = pos1.getX() - pos2.getX();
+            int dy = pos1.getY() - pos2.getY();
+            int dz = pos1.getZ() - pos2.getZ();
 
-            int x = dx <= 0 ? pos1.getX() : pos2.getX(); //12
-            int y = dy <= 0 ? pos1.getY() : pos2.getY(); //-60
-            int z = dz <= 0 ? pos1.getZ() : pos2.getZ(); //12
+            int x = dx <= 0 ? pos1.getX() : pos2.getX();
+            int y = dy <= 0 ? pos1.getY() : pos2.getY();
+            int z = dz <= 0 ? pos1.getZ() : pos2.getZ();
 
             for (int i = 0; i < Math.abs(dy) + 1; i++) {
                 for (int j = 0; j < Math.abs(dz) + 1; j++) {
