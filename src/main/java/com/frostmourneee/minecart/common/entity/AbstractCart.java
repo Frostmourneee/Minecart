@@ -117,7 +117,9 @@ public abstract class AbstractCart extends AbstractMinecart {
                 --lSteps;
 
                 if (!(deltaMovement.equals(Vec3.ZERO) && isStoppedByNaturalSlowdown)) {
-                    if (!hasFrontCart()) setPos(d5, d6, d7); //not clamped
+                    if (!hasFrontCart()) {
+                        setPos(d5, d6, d7); //not clamped
+                    }
                 }
             } else {
                 reapplyPosition();
@@ -565,7 +567,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (isFirstCart()) {
             if (hasBackCart() && getFirstPassenger() != null &&
                 cosOfVecs(horVec(getFirstPassenger().deltaMovement), horVec(position().subtract(backCart.position()))) <= 0 &&
-                deltaMovement.length() < 2.0E-3) return;
+                deltaMovement.length() < 5 * ZERO_INDENT3) return;
             if (horVec(vec).length() < 1.0E-10) {
                 deltaMovement = Vec3.ZERO;
                 return;
@@ -1066,17 +1068,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         } else return nearZero(delta.y, 1.0E-3);
     }
 
-    public boolean bothUpOrDownOrForward() {
-        if (zeroDelta() || frontCart.zeroDelta()) {
-            return anyRailShape(level.getBlockState(blockPosition()), blockPosition()).equals
-                    (anyRailShape(frontCart.level.getBlockState(frontCart.blockPosition()), frontCart.blockPosition()));
-        } else return (goesUp() && frontCart.goesUp()) ||
-                    (goesDown() && frontCart.goesDown()) ||
-                    (goesFlat() && frontCart.goesFlat());
-    }
     public boolean isOnHorizontalLine(AbstractCart cart) {
-        if (cart != null) return Math.abs(getY() - cart.getY()) < ZERO_INDENT4 &&
-                (Math.abs(getX() - cart.getX()) < ZERO_INDENT4 || Math.abs(getZ() - cart.getZ()) < ZERO_INDENT4);
+        if (cart != null) return nearZero(getY() - cart.getY(), ZERO_INDENT2) &&
+                (nearZero(getX() - cart.getX(), ZERO_INDENT2) || nearZero(getZ() - cart.getZ(), ZERO_INDENT2));
         else return false;
     }
 
