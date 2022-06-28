@@ -20,6 +20,7 @@ public class ccUtil {
     //Standard near zero const
     public static final double ZERO_INDENT4 = 1.0E-4;
     public static final double ZERO_INDENT3 = 1.0E-3;
+    public static final double ZERO_INDENT2 = 1.0E-2;
 
     public static boolean nearZero(double value, double epsilon) {
         return Math.abs(value) < epsilon;
