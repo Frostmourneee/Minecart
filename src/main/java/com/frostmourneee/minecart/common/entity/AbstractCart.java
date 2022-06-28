@@ -19,6 +19,7 @@ import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.monster.Endermite;
 import net.minecraft.world.entity.monster.Silverfish;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.item.ItemStack;
@@ -82,6 +83,7 @@ public abstract class AbstractCart extends AbstractMinecart {
     public AbstractCart backCart = null;
     public AbstractCart frontCart = null;
     public LivingEntity entityToBeRepelled = null;
+    public ArrayList<LivingEntity> repellingEntities = new ArrayList<>();
 
     @Override
     public void tick() {
@@ -177,8 +179,13 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (!zeroDeltaHorizontal()) setYRot(ccUtil.vecToDirection(delta).toYRot());
         if (repelTick != 0) {
             repelTick--;
-            if (repelTick == 0) entityData.set(DATA_REPEL_TICK, 0);
+            if (repelTick == 0) {
+                entityData.set(DATA_REPEL_TICK, 0);
+                getFirstCart().repellingEntities.remove(entityToBeRepelled);
+                entityToBeRepelled = null;
+            }
         }
+        if (!getFirstCart().equals(this)) repellingEntities.clear();
     }
     public void clampingToFrontCart() {
         ArrayList<AbstractCart> frontAbstractCart;
@@ -276,13 +283,14 @@ public abstract class AbstractCart extends AbstractMinecart {
                         Vec3 pushDir = horVec(lEntity1.position()).subtract(horVec(position()));
                         if (!level.isClientSide && isPushing(lEntity1, box, pushDir)) {
                             entityToBeRepelled = lEntity1;
+                            getFirstCart().repellingEntities.add(entityToBeRepelled);
                             repelDir = pushDir;
                             entityData.set(DATA_REPEL_ENTITY_ID, entityToBeRepelled.getId());
                             entityData.set(DATA_REPEL_TICK, 15);
                         }
                     }
 
-                    if (!(entity1 instanceof Player) && !(entity1 instanceof IronGolem) && !(entity1 instanceof AbstractMinecart) && !isVehicle() && !entity1.isPassenger()) {
+                    if (!(entity1 instanceof Player) && !(entity1 instanceof IronGolem) && !(entity1 instanceof AbstractMinecart) && !isVehicle() && !entity1.isPassenger() && !isClamped()) {
                         entity1.startRiding(this);
                     } else {
                         entityPushingBySelf(entity1);
@@ -299,6 +307,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                         Vec3 pushDir = horVec(lEntity.position()).subtract(horVec(position()));
                         if (!level.isClientSide && isPushing(lEntity, box, pushDir)) {
                             entityToBeRepelled = lEntity;
+                            getFirstCart().repellingEntities.add(entityToBeRepelled);
                             repelDir = pushDir;
                             entityData.set(DATA_REPEL_ENTITY_ID, entityToBeRepelled.getId());
                             entityData.set(DATA_REPEL_TICK, 15);
@@ -425,7 +434,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         /*
          * NearZero needed because if cart is moving then it pushes off any other entities
          */
-        if (isClamped()) return (zeroDelta() || deltaMovement.horizontalDistance() < 0.1D) && isAlive();
+        if (isClamped()) return isAlive();
         else return this instanceof LocomotiveEntity && ((LocomotiveEntity) this).hasFuel() && (zeroDeltaMovement() || zeroDelta()) && isAlive();
     }
     @Override
@@ -435,18 +444,20 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isClamped() {
         return hasFrontCart() || hasBackCart();
     }
-    public boolean isPushing(Entity entity, AABB box, Vec3 pushDir) {
-        boolean result = deltaMovement.horizontalDistance() > 0.1D &&
+    public boolean isPushing(LivingEntity lEntity, AABB box, Vec3 pushDir) {
+        boolean flag1 = deltaMovement.horizontalDistance() > 0.1D &&
                 repelTick == 0 && !zeroDelta() && isCommonActing() && !(!(this instanceof LocomotiveEntity) && !isClamped());
+        boolean flag2 = !getFirstCart().repellingEntities.contains(lEntity);
+        boolean result = flag1 && flag2;
 
-        if (isClamped() || !(entity instanceof Player)) {
+        if (isClamped() || !(lEntity instanceof Player)) {
             return result;
-        } else if (nearZero(entity.deltaMovement.horizontalDistance(), ZERO_INDENT4)) {
+        } else if (nearZero(lEntity.deltaMovement.horizontalDistance(), ZERO_INDENT4)) {
             return result && isAngleAcute(pushDir, dirToVec3());
-        } else if (level.getEntities(this, box.deflate(0.25D, 0.0D, 0.25D)).contains(entity)) {
-            return result && isAngleAcute(pushDir, dirToVec3()) && !isAngleAcute(dirToVec3(), horVec(entity.deltaMovement));
+        } else if (level.getEntities(this, box.deflate(0.25D, 0.0D, 0.25D)).contains(lEntity)) {
+            return result && isAngleAcute(pushDir, dirToVec3()) && !isAngleAcute(dirToVec3(), horVec(lEntity.deltaMovement));
         } else {
-            return result && isAngleAcute(pushDir, dirToVec3()) && cosOfVecs(dirToVec3(), horVec(entity.deltaMovement)) < Math.sqrt(2) / 2;
+            return result && isAngleAcute(pushDir, dirToVec3()) && cosOfVecs(dirToVec3(), horVec(lEntity.deltaMovement)) < Math.sqrt(2) / 2;
         }
     }
     public void repel() {
@@ -458,21 +469,23 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         Vec3 projectionTenthed = projection.normalize().scale(0.1F);
         entityToBeRepelled.setDeltaMovement(repelDir.add(projectionTenthed).add(0.0F, 0.3F, 0.0F));
+        entityToBeRepelled.animateHurt();
 
         if (!level.isClientSide) {
-            entityToBeRepelled.animateHurt();
-
             float damagedHealth;
-            if (entityToBeRepelled.getMaxHealth() > 6.0F && entityToBeRepelled.getMaxHealth() <= 12.0F && entityToBeRepelled.getHealth() == entityToBeRepelled.getMaxHealth()) damagedHealth = entityToBeRepelled.getMaxHealth() / 2.0F;
-            else damagedHealth = entityToBeRepelled.getHealth() - 12.0F;
+            if (entityToBeRepelled.getMaxHealth() > 6.0F && entityToBeRepelled.getMaxHealth() <= 12.0F &&
+                entityToBeRepelled.getHealth() == entityToBeRepelled.getMaxHealth()) {
+                damagedHealth = entityToBeRepelled.getMaxHealth() - 1.0F;
+            } else damagedHealth = entityToBeRepelled.getHealth() - 1.0F;
 
             if (entityToBeRepelled instanceof Silverfish || entityToBeRepelled instanceof Endermite) damagedHealth = 0.0F;
 
             entityToBeRepelled.setHealth(damagedHealth);
+            entityToBeRepelled.setLastHurtByMob(new Zombie(level)); //Strangely but this triggers panic goal on the entity
 
             if (entityToBeRepelled.isDeadOrDying()) {
                 entityToBeRepelled.lastHurtByPlayerTime = 1;
-                entityToBeRepelled.dropAllDeathLoot(DamageSource.FALL);
+                if (!(entityToBeRepelled instanceof Player)) entityToBeRepelled.dropAllDeathLoot(DamageSource.FALL);
             }
         }
 
@@ -1131,6 +1144,12 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     public boolean hasFrontCart() {
         return frontCart != null;
+    }
+    public boolean hasOnlyFrontCart() {
+        return hasFrontCart() && !hasBackCart();
+    }
+    public boolean hasOnlyBackCart() {
+        return hasBackCart() && !hasFrontCart();
     }
 
     public boolean readyAfterRejoin() {

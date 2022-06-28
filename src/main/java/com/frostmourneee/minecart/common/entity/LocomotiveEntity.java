@@ -91,7 +91,7 @@ public class LocomotiveEntity extends AbstractCart {
             if (!player.getAbilities().instabuild) {
                 itemstack.shrink(1);
             }
-            if (fuel == 0) cartSound(ccSoundInit.LOCOMOTIVE_START.get());
+            if (fuel == 0 && zeroDeltaMovement()) cartSound(ccSoundInit.LOCOMOTIVE_START.get());
             fuel += FUEL_ADD_BY_CLICK;
         }
 
