@@ -1145,12 +1145,6 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean hasFrontCart() {
         return frontCart != null;
     }
-    public boolean hasOnlyFrontCart() {
-        return hasFrontCart() && !hasBackCart();
-    }
-    public boolean hasOnlyBackCart() {
-        return hasBackCart() && !hasFrontCart();
-    }
 
     public boolean readyAfterRejoin() {
         return tickCount > 9;
