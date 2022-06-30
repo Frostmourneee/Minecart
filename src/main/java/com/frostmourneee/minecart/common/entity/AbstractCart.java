@@ -96,7 +96,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         fieldsInitAndSidesSync();
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreCartsRelations();
-        //if (isFirstCart() && trainLengthAfterRejoin == trainLength() && trainLength() > 1 && readyAfterRejoin()) trainIdRestoreAfterRejoin();
+        if (isFirstCart() && trainLengthAfterRejoin == trainLength() && trainLength() > 1 && readyAfterRejoin()) trainIdRestoreAfterRejoin();
         if (isClamping && readyAfterRejoin()) clampingToFrontCart();
         if (clampTick == 1) {
             AbstractCart tmp = getAndSpawnCartWithIdReplacement();
@@ -293,7 +293,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     }
     public AbstractCart getAndSpawnCartWithIdReplacement() {
-        remove(RemovalReason.UNLOADED_TO_CHUNK);
         AbstractCart cart = null;
         switch (getCartType()) {
             case WAGON -> cart = new WagonEntity(ccEntityInit.WAGON_ENTITY.get(), level);
@@ -303,6 +302,11 @@ public abstract class AbstractCart extends AbstractMinecart {
         cart.setPos(position());
         cart.setYRot(getYRot());
 
+        if (isVehicle()) {
+            Entity passenger = getPassengers().get(0);
+            passenger.startRiding(cart);
+        }
+        remove(RemovalReason.UNLOADED_TO_CHUNK);
         cart.entityData.set(DATA_DEBUG_MODE, entityData.get(DATA_DEBUG_MODE));
         cart.entityData.set(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, entityData.get(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN));
         cart.entityData.set(DATA_REPEL_TICK, entityData.get(DATA_REPEL_TICK));
@@ -510,7 +514,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isPushing(LivingEntity lEntity, AABB box, Vec3 pushDir) {
         boolean flag1 = deltaMovement.horizontalDistance() > 0.1D &&
                 repelTick == 0 && !zeroDelta() && isCommonActing() && !(!(this instanceof LocomotiveEntity) && !isClamped());
-        boolean flag2 = !getFirstCart().repellingEntities.contains(lEntity);
+        boolean flag2 = !getFirstCart().repellingEntities.contains(lEntity) && (!lEntity.isPassenger() ||
+                (lEntity.getVehicle() != this && lEntity.getVehicle() != backCart && lEntity.getVehicle() != frontCart));
         boolean result = flag1 && flag2;
 
         if (isClamped() || !(lEntity instanceof Player)) {
@@ -1051,6 +1056,16 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             return tmpCart;
         } else return null;
+    }
+    public void trainIdRestoreAfterRejoin() {
+        trainLengthAfterRejoin = 1;
+        entityData.set(DATA_TRAIN_LENGTH_AFTER_REJOIN, 1);
+
+        AbstractCart tmp = this;
+        while (tmp.hasBackCart()) {
+            tmp = tmp.backCart;
+            tmp = tmp.getAndSpawnCartWithIdReplacement();
+        }
     }
 
     public AbstractCart getLocomotive() {
