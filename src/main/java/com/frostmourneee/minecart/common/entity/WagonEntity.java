@@ -20,7 +20,6 @@ import java.util.ArrayList;
 
 import static com.frostmourneee.minecart.Util.ccUtil.customPrint;
 
-
 public class WagonEntity extends AbstractCart {
 
     public WagonEntity(EntityType entityType, Level level) {
