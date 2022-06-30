@@ -1,7 +1,6 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.minecart.Util.ccUtil;
-import com.frostmourneee.minecart.common.item.WagonItem;
 import com.frostmourneee.minecart.core.init.ccItemInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import net.minecraft.core.BlockPos;

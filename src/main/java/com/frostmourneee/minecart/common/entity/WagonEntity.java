@@ -18,6 +18,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
+import static com.frostmourneee.minecart.Util.ccUtil.customPrint;
+
 
 public class WagonEntity extends AbstractCart {
 
