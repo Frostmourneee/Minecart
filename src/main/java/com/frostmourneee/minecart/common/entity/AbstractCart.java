@@ -106,7 +106,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                 tmp = tmp.getAndSpawnCartWithIdReplacement();
             }
         }
-        if (repelTick == 10 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) repel();
+        if (repelTick == 10 && readyAfterRejoin()) repel();
         collisionProcessing();
     }
 
