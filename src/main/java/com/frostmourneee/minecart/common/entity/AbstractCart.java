@@ -96,7 +96,7 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         fieldsInitAndSidesSync();
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreCartsRelations();
-        if (isFirstCart() && trainLengthAfterRejoin == trainLength() && trainLength() > 1 && readyAfterRejoin()) trainIdRestoreAfterRejoin();
+        //if (isFirstCart() && trainLengthAfterRejoin == trainLength() && trainLength() > 1 && readyAfterRejoin()) trainIdRestoreAfterRejoin();
         if (isClamping && readyAfterRejoin()) clampingToFrontCart();
         if (clampTick == 1) {
             AbstractCart tmp = getAndSpawnCartWithIdReplacement();
@@ -108,6 +108,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         if (repelTick == 10 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) repel();
         collisionProcessing();
+        if (hasFrontCart()) posCorrectionToFrontCart();
     }
 
     public void vanillaTick() {
@@ -178,11 +179,10 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             firstTick = false;
         }
-        /*
-         * GetId() is used to determine who was spawned earlier. Entity#tickCount should not be used because after rejoin
-         * tickCounts are equal
-         */
-        if (hasFrontCart() && frontCart.getId() < getId()) posCorrectionToFrontCart();
+
+        //if (hasFrontCart()) posCorrectionToFrontCart();
+        //if (hasBackCart()) backCartPosCorrectionToThis();
+        //if (isClamped()) customPrint(this, hasFrontCart() ? distanceTo(frontCart) : distanceTo(backCart));
     }
     public void posCorrectionToFrontCart() {
         /*
@@ -196,6 +196,11 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         if (isOnHorizontalLine(frontCart) && isCommonActing()) {
             setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
+        }
+    }
+    public void backCartPosCorrectionToThis() {
+        if (isOnHorizontalLine(backCart) && backCart.isCommonActing()) {
+            backCart.setPos(position().add(oppDirToVec3().scale(1.625D)));
         }
     }
     public void fieldsInitAndSidesSync() {
@@ -284,7 +289,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
 
             if (getId() < potentialFrontCart.getId()) {
-                entityData.set(DATA_CLAMP_TICK, 15);
+                //entityData.set(DATA_CLAMP_TICK, 15);
             }
 
             isClamping = false;
@@ -905,13 +910,13 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (DATA_IS_CLAMPING.equals(data)) {
             isClamping = (boolean)entityData.get(data);
         }
-        if (DATA_TRAIN_LENGTH_AFTER_REJOIN.equals(data)) {
-            trainLengthAfterRejoin = (int)entityData.get(data);
-        }
         if (DATA_IS_FIRST_TIME_SPAWNED.equals(data)) {
             isFirstTimeSpawned = (boolean)entityData.get(data);
         }
 
+        if (DATA_TRAIN_LENGTH_AFTER_REJOIN.equals(data)) {
+            trainLengthAfterRejoin = (int)entityData.get(data);
+        }
         if (DATA_REPEL_ENTITY_ID.equals(data)) {
             repelEntityId = (int)entityData.get(data);
         }
