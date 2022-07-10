@@ -41,6 +41,7 @@ public class WagonEntity extends AbstractCart {
 
         if (itemStack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
             setDebugMode(!debugMode); //TODO remove
+            customPrint(this, backCart, frontCart);
         }
 
         if (itemStack.getItem().equals(ccItemInit.CLAMP.get()) && isClamping) {

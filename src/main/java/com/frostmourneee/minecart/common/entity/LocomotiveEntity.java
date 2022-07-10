@@ -101,6 +101,7 @@ public class LocomotiveEntity extends AbstractCart {
 
         if (itemstack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
             setDebugMode(!debugMode); //TODO remove
+            customPrint(this, backCart, frontCart);
         }
 
         return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
