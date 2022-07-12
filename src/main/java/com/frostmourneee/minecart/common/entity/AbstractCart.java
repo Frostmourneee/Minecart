@@ -79,7 +79,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public int repelTick = 0;
     public int clampTick = 0;
     public int entityId = 0;
-    public int linkedTicks = 0;
+    public int frontLinkedTicks = 0;
+    public int backLinkedTicks = 0;
 
     public boolean debugMode = false; //TODO remove
 
@@ -172,14 +173,16 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     }
     public void linkedMovement() {
-        if (isClamped()) linkedTicks++;
+        if (hasFrontCart()) frontLinkedTicks++;
+        if (hasBackCart()) backLinkedTicks++;
 
         if (hasFrontCart()) {
-            if (frontCart.linkedTicks == linkedTicks) {
+            if (frontCart.backLinkedTicks == frontLinkedTicks) {
                 posCorrectionToFrontCart();
             }
-        } else if (hasBackCart()) {
-            if (linkedTicks == backCart.linkedTicks) {
+        }
+        if (hasBackCart()) {
+            if (backLinkedTicks == backCart.frontLinkedTicks) {
                 backCart.posCorrectionToFrontCart();
             }
         }
@@ -538,26 +541,26 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void resetFront() {
         setHasFrontCart(false);
         frontCart = null;
-        linkedTicks = 0;
+        frontLinkedTicks = 0;
     }
     public void resetBack() {
         setHasBackCart(false);
         backCart = null;
-        linkedTicks = 0;
+        backLinkedTicks = 0;
     }
 
     public void connectFront(AbstractCart cart) {
         if (!cart.equals(frontCart)) {
             frontCart = cart;
             setHasFrontCart(true);
-            linkedTicks = 0;
+            frontLinkedTicks = 0;
         }
     }
     public void connectBack(AbstractCart cart) {
         if (!cart.equals(backCart)) {
             backCart = cart;
             setHasBackCart(true);
-            linkedTicks = 0;
+            backLinkedTicks = 0;
         }
     }
 
