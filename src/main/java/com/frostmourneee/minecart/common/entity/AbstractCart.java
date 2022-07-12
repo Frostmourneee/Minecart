@@ -590,9 +590,9 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //hasBackCart
         if (isFirstCart()) {
-            if (hasBackCart() && getFirstPassenger() != null &&
+            /*if (hasBackCart() && getFirstPassenger() != null &&
                 cosOfVecs(horVec(getFirstPassenger().deltaMovement), horVec(position().subtract(backCart.position()))) <= 0 &&
-                deltaMovement.length() < 5 * ZERO_INDENT3) return;
+                deltaMovement.length() < 5 * ZERO_INDENT3) return;*/
             if (horVec(vec).length() < 1.0E-10) {
                 deltaMovement = Vec3.ZERO;
                 return;
@@ -709,6 +709,167 @@ public abstract class AbstractCart extends AbstractMinecart {
             return null;
         }
     }
+
+    @Override
+    protected void moveAlongTrack(BlockPos pPos, BlockState pState) {
+        this.resetFallDistance();
+        double d0 = this.getX();
+        double d1 = this.getY();
+        double d2 = this.getZ();
+        Vec3 vec3 = this.getPos(d0, d1, d2);
+        d1 = pPos.getY();
+        boolean flag = false;
+        boolean flag1 = false;
+        BaseRailBlock baserailblock = (BaseRailBlock) pState.getBlock();
+        if (baserailblock instanceof PoweredRailBlock && !((PoweredRailBlock) baserailblock).isActivatorRail()) {
+            flag = pState.getValue(PoweredRailBlock.POWERED);
+            flag1 = !flag;
+        }
+
+        Vec3 vec31 = this.getDeltaMovement();
+        RailShape railshape = ((BaseRailBlock)pState.getBlock()).getRailDirection(pState, this.level, pPos, this);
+        switch (railshape) {
+            case ASCENDING_EAST -> {
+                this.setDeltaMovement(vec31.add(-1 * getSlopeAdjustment(), 0.0D, 0.0D));
+                ++d1;
+            }
+            case ASCENDING_WEST -> {
+                this.setDeltaMovement(vec31.add(getSlopeAdjustment(), 0.0D, 0.0D));
+                ++d1;
+            }
+            case ASCENDING_NORTH -> {
+                this.setDeltaMovement(vec31.add(0.0D, 0.0D, getSlopeAdjustment()));
+                ++d1;
+            }
+            case ASCENDING_SOUTH -> {
+                this.setDeltaMovement(vec31.add(0.0D, 0.0D, -1 * getSlopeAdjustment()));
+                ++d1;
+            }
+        }
+
+        vec31 = this.getDeltaMovement();
+        Pair<Vec3i, Vec3i> pair = exits(railshape);
+        Vec3i vec3i = pair.getFirst();
+        Vec3i vec3i1 = pair.getSecond();
+        double d4 = vec3i1.getX() - vec3i.getX();
+        double d5 = vec3i1.getZ() - vec3i.getZ();
+        double d6 = Math.sqrt(d4 * d4 + d5 * d5);
+        double d7 = vec31.x * d4 + vec31.z * d5;
+        if (d7 < 0.0D) {
+            d4 = -d4;
+            d5 = -d5;
+        }
+
+        double d8 = Math.min(2.0D, vec31.horizontalDistance());
+        vec31 = new Vec3(d8 * d4 / d6, vec31.y, d8 * d5 / d6);
+        this.setDeltaMovement(vec31);
+        Entity entity = this.getFirstPassenger();
+        if (entity instanceof Player) {
+            Vec3 vec32 = entity.getDeltaMovement();
+            double d9 = vec32.horizontalDistanceSqr();
+            double d11 = this.getDeltaMovement().horizontalDistanceSqr();
+            boolean bool = hasBackCart() && getFirstPassenger() != null &&
+                    cosOfVecs(horVec(getFirstPassenger().deltaMovement), horVec(position().subtract(backCart.position()))) <= 0 &&
+                    deltaMovement.length() < 5 * ZERO_INDENT3;
+            if (d9 > 1.0E-4D && d11 < 0.01D && !bool) {
+                this.setDeltaMovement(this.getDeltaMovement().add(vec32.x * 0.1D, 0.0D, vec32.z * 0.1D));
+                flag1 = false;
+            }
+        }
+
+        if (flag1 && shouldDoRailFunctions()) {
+            double d22 = this.getDeltaMovement().horizontalDistance();
+            if (d22 < 0.03D) {
+                this.setDeltaMovement(Vec3.ZERO);
+            } else {
+                this.setDeltaMovement(this.getDeltaMovement().multiply(0.5D, 0.0D, 0.5D));
+            }
+        }
+
+        double d23 = (double)pPos.getX() + 0.5D + (double)vec3i.getX() * 0.5D;
+        double d10 = (double)pPos.getZ() + 0.5D + (double)vec3i.getZ() * 0.5D;
+        double d12 = (double)pPos.getX() + 0.5D + (double)vec3i1.getX() * 0.5D;
+        double d13 = (double)pPos.getZ() + 0.5D + (double)vec3i1.getZ() * 0.5D;
+        d4 = d12 - d23;
+        d5 = d13 - d10;
+        double d14;
+        if (d4 == 0.0D) {
+            d14 = d2 - (double)pPos.getZ();
+        } else if (d5 == 0.0D) {
+            d14 = d0 - (double)pPos.getX();
+        } else {
+            double d15 = d0 - d23;
+            double d16 = d2 - d10;
+            d14 = (d15 * d4 + d16 * d5) * 2.0D;
+        }
+
+        d0 = d23 + d4 * d14;
+        d2 = d10 + d5 * d14;
+        this.setPos(d0, d1, d2);
+        this.moveMinecartOnRail(pPos);
+        if (vec3i.getY() != 0 && Mth.floor(this.getX()) - pPos.getX() == vec3i.getX() && Mth.floor(this.getZ()) - pPos.getZ() == vec3i.getZ()) {
+            this.setPos(this.getX(), this.getY() + (double)vec3i.getY(), this.getZ());
+        } else if (vec3i1.getY() != 0 && Mth.floor(this.getX()) - pPos.getX() == vec3i1.getX() && Mth.floor(this.getZ()) - pPos.getZ() == vec3i1.getZ()) {
+            this.setPos(this.getX(), this.getY() + (double)vec3i1.getY(), this.getZ());
+        }
+
+        this.applyNaturalSlowdown();
+        Vec3 vec33 = this.getPos(this.getX(), this.getY(), this.getZ());
+        if (vec33 != null && vec3 != null) {
+            double d17 = (vec3.y - vec33.y) * 0.05D;
+            Vec3 vec34 = this.getDeltaMovement();
+            double d18 = vec34.horizontalDistance();
+            if (d18 > 0.0D) {
+                this.setDeltaMovement(vec34.multiply((d18 + d17) / d18, 1.0D, (d18 + d17) / d18));
+            }
+
+            this.setPos(this.getX(), vec33.y, this.getZ());
+        }
+
+        int j = Mth.floor(this.getX());
+        int i = Mth.floor(this.getZ());
+        if (j != pPos.getX() || i != pPos.getZ()) {
+            Vec3 vec35 = this.getDeltaMovement();
+            double d26 = vec35.horizontalDistance();
+            this.setDeltaMovement(d26 * (double)(j - pPos.getX()), vec35.y, d26 * (double)(i - pPos.getZ()));
+        }
+
+        if (shouldDoRailFunctions())
+            baserailblock.onMinecartPass(pState, level, pPos, this);
+
+        if (flag && shouldDoRailFunctions()) {
+            Vec3 vec36 = this.getDeltaMovement();
+            double d27 = vec36.horizontalDistance();
+            if (d27 > 0.01D) {
+                double d19 = 0.06D;
+                this.setDeltaMovement(vec36.add(vec36.x / d27 * 0.06D, 0.0D, vec36.z / d27 * 0.06D));
+            } else {
+                Vec3 vec37 = this.getDeltaMovement();
+                double d20 = vec37.x;
+                double d21 = vec37.z;
+                if (railshape == RailShape.EAST_WEST) {
+                    if (this.level.getBlockState(pPos.west()).isRedstoneConductor(this.level, pPos.west())) {
+                        d20 = 0.02D;
+                    } else if (this.level.getBlockState(pPos.east()).isRedstoneConductor(this.level, pPos.east())) {
+                        d20 = -0.02D;
+                    }
+                } else {
+                    if (railshape != RailShape.NORTH_SOUTH) {
+                        return;
+                    }
+
+                    if (this.level.getBlockState(pPos.north()).isRedstoneConductor(this.level, pPos.north())) {
+                        d21 = 0.02D;
+                    } else if (this.level.getBlockState(pPos.south()).isRedstoneConductor(this.level, pPos.south())) {
+                        d21 = -0.02D;
+                    }
+                }
+
+                this.setDeltaMovement(d20, vec37.y, d21);
+            }
+        }
+    }
+
     @Override
     public void moveMinecartOnRail(@NotNull BlockPos pos) { //Non-default because getMaximumSpeed is protected
         AbstractMinecart mc = this;
