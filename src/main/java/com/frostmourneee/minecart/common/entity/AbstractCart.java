@@ -1,7 +1,6 @@
 package com.frostmourneee.minecart.common.entity;
 
 import com.frostmourneee.minecart.Util.ccUtil;
-import com.frostmourneee.minecart.core.init.ccEntityInit;
 import com.frostmourneee.minecart.core.init.ccSoundInit;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
@@ -56,9 +55,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_IS_FIRST_TIME_SPAWNED = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Integer> DATA_REPEL_TICK = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
-    public static final EntityDataAccessor<Integer> DATA_REPEL_ENTITY_ID = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> DATA_CLAMP_TICK = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
-    public static final EntityDataAccessor<Integer> DATA_TRAIN_LENGTH_AFTER_REJOIN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> DATA_REPEL_ENTITY_ID = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<String> DATA_SERVER_POS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.STRING);
 
     public static final EntityDataAccessor<Boolean> DATA_DEBUG_MODE = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN); //TODO remove
@@ -79,9 +77,9 @@ public abstract class AbstractCart extends AbstractMinecart {
     public boolean isClamping = false;
     public boolean isFirstTimeSpawned = false;
     public int repelTick = 0;
-    public int repelEntityId = 0;
     public int clampTick = 0;
-    public int trainLengthAfterRejoin = 1;
+    public int entityId = 0;
+    public int linkedTicks = 0;
 
     public boolean debugMode = false; //TODO remove
 
@@ -95,20 +93,13 @@ public abstract class AbstractCart extends AbstractMinecart {
         vanillaTick();
 
         fieldsInitAndSidesSync();
-        if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreCartsRelations();
-        //if (isFirstCart() && trainLengthAfterRejoin == trainLength() && trainLength() > 1 && readyAfterRejoin()) trainIdRestoreAfterRejoin();
-        if (isClamping && readyAfterRejoin()) clampingToFrontCart();
-        if (clampTick == 1) {
-            AbstractCart tmp = getAndSpawnCartWithIdReplacement();
 
-            while (tmp.hasBackCart()) {
-                tmp = tmp.backCart;
-                tmp = tmp.getAndSpawnCartWithIdReplacement();
-            }
-        }
+        if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreCartsRelations();
+        if (isClamping && clampTick == 0 && readyAfterRejoin()) clampingToFrontCart();
         if (repelTick == 10 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) repel();
+        if (clampTick == 1) finalStageOfClamping();
         collisionProcessing();
-        if (hasFrontCart()) posCorrectionToFrontCart();
+        linkedMovement();
     }
 
     public void vanillaTick() {
@@ -179,10 +170,19 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             firstTick = false;
         }
+    }
+    public void linkedMovement() {
+        if (isClamped()) linkedTicks++;
 
-        //if (hasFrontCart()) posCorrectionToFrontCart();
-        //if (hasBackCart()) backCartPosCorrectionToThis();
-        //if (isClamped()) customPrint(this, hasFrontCart() ? distanceTo(frontCart) : distanceTo(backCart));
+        if (hasFrontCart()) {
+            if (frontCart.linkedTicks == linkedTicks) {
+                posCorrectionToFrontCart();
+            }
+        } else if (hasBackCart()) {
+            if (linkedTicks == backCart.linkedTicks) {
+                backCart.posCorrectionToFrontCart();
+            }
+        }
     }
     public void posCorrectionToFrontCart() {
         /*
@@ -196,11 +196,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         if (isOnHorizontalLine(frontCart) && isCommonActing()) {
             setPos(frontCart.position().add(frontCart.oppDirToVec3().scale(1.625D)));
-        }
-    }
-    public void backCartPosCorrectionToThis() {
-        if (isOnHorizontalLine(backCart) && backCart.isCommonActing()) {
-            backCart.setPos(position().add(oppDirToVec3().scale(1.625D)));
         }
     }
     public void fieldsInitAndSidesSync() {
@@ -219,6 +214,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         if (clampTick != 0) {
             clampTick--;
+            if (clampTick == 0) entityData.set(DATA_CLAMP_TICK, 0);
         }
         if (!isFirstCart()) repellingEntities.clear();
     }
@@ -233,6 +229,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             clampingFail();
             return;
         }
+
         AbstractCart potentialFrontCart = frontAbstractCart.get(0);
         for (int i = 1; i < frontAbstractCart.size(); i++) {
             if (frontAbstractCart.get(i).distanceTo(this) < potentialFrontCart.distanceTo(this)) {
@@ -284,50 +281,20 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (dist >= 1.625D && dist <= 1.65D || dist < 1.625D) {
             setDeltaMovement(Vec3.ZERO);
 
-            potentialFrontCart.connectBack(this);
-            connectFront(potentialFrontCart);
-            setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
-
-            if (getId() < potentialFrontCart.getId()) {
-                //entityData.set(DATA_CLAMP_TICK, 15);
-            }
-
-            isClamping = false;
-            if (level.isClientSide) setIsClamping(false);
-            cartSound(ccSoundInit.CART_CLAMP.get());
+            entityId = potentialFrontCart.getId();
+            clampTick = 9;
+            entityData.set(DATA_CLAMP_TICK, 9);
         }
     }
-    public AbstractCart getAndSpawnCartWithIdReplacement() {
-        AbstractCart cart = null;
-        switch (getCartType()) {
-            case WAGON -> cart = new WagonEntity(ccEntityInit.WAGON_ENTITY.get(), level);
-            case LOCOMOTIVE -> cart = new LocomotiveEntity(ccEntityInit.LOCOMOTIVE_ENTITY.get(), level);
-        }
-        cart.setIsFirstTimeSpawned(true);
-        cart.setPos(position());
-        cart.setYRot(getYRot());
+    public void finalStageOfClamping() {
+        AbstractCart futureFrontCart = (AbstractCart) level.getEntity(entityId);
 
-        if (isVehicle()) {
-            Entity passenger = getPassengers().get(0);
-            passenger.startRiding(cart);
-        }
-        remove(RemovalReason.UNLOADED_TO_CHUNK);
-        cart.entityData.set(DATA_DEBUG_MODE, entityData.get(DATA_DEBUG_MODE));
-        cart.entityData.set(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, entityData.get(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN));
-        cart.entityData.set(DATA_REPEL_TICK, entityData.get(DATA_REPEL_TICK));
-        cart.entityData.set(DATA_REPEL_ENTITY_ID, entityData.get(DATA_REPEL_ENTITY_ID));
-        cart.repellingEntities = repellingEntities;
-        if (hasFrontCart()) {
-            cart.connectFront(frontCart);
-            frontCart.connectBack(cart);
-        }
-        if (hasBackCart()) {
-            cart.connectBack(backCart);
-            backCart.connectFront(cart);
-        }
+        futureFrontCart.connectBack(this);
+        connectFront(futureFrontCart);
+        setPos(futureFrontCart.position().add(futureFrontCart.oppDirToVec3().scale(1.625D)));
 
-        level.addFreshEntity(cart);
-        return cart;
+        setIsClamping(false);
+        cartSound(ccSoundInit.CART_CLAMP.get());
     }
     public void clampingFail() {
         setDeltaMovement(getDeltaMovement().scale(0.2D));
@@ -571,22 +538,27 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void resetFront() {
         setHasFrontCart(false);
         frontCart = null;
+        linkedTicks = 0;
     }
     public void resetBack() {
         setHasBackCart(false);
         backCart = null;
+        linkedTicks = 0;
     }
-    public void resetFull() {
-        resetFront();
-        resetBack();
-    }
+
     public void connectFront(AbstractCart cart) {
-        frontCart = cart;
-        setHasFrontCart(true);
+        if (!cart.equals(frontCart)) {
+            frontCart = cart;
+            setHasFrontCart(true);
+            linkedTicks = 0;
+        }
     }
     public void connectBack(AbstractCart cart) {
-        backCart = cart;
-        setHasBackCart(true);
+        if (!cart.equals(backCart)) {
+            backCart = cart;
+            setHasBackCart(true);
+            linkedTicks = 0;
+        }
     }
 
     public Vec3 dirToVec3() {
@@ -807,20 +779,16 @@ public abstract class AbstractCart extends AbstractMinecart {
         potentialFrontCart.setIsStoppedByNaturalSlowdown(true);
         potentialFrontCart.entityData.set(DATA_SERVER_POS, potentialFrontCart.position().toString());
 
-        if (distanceTo(potentialFrontCart) > 1.625D) setIsClamping(true);
+        if (distanceTo(potentialFrontCart) > 1.625D) {
+            setIsClamping(true);
+            /*connectFront(potentialFrontCart);
+            potentialFrontCart.connectBack(this);
+            posCorrectionToFrontCart();*/
+        }
         else if (distanceTo(potentialFrontCart) == 1.625D || !hasBackCart()) {
             connectFront(potentialFrontCart);
             potentialFrontCart.connectBack(this);
             setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
-
-            if (getId() < potentialFrontCart.getId()) {
-                AbstractCart tmp = getAndSpawnCartWithIdReplacement();
-
-                while (tmp.hasBackCart()) {
-                    tmp = tmp.backCart;
-                    tmp = tmp.getAndSpawnCartWithIdReplacement();
-                }
-            }
             cartSound(ccSoundInit.CART_CLAMP.get());
         } else {
             cartSound(ccSoundInit.CART_CLAMP_FAIL.get());
@@ -894,7 +862,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_REPEL_TICK, 0);
         entityData.define(DATA_REPEL_ENTITY_ID, 0);
         entityData.define(DATA_CLAMP_TICK, 0);
-        entityData.define(DATA_TRAIN_LENGTH_AFTER_REJOIN, 1);
         entityData.define(DATA_SERVER_POS, "(0, 0, 0)");
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
@@ -914,23 +881,20 @@ public abstract class AbstractCart extends AbstractMinecart {
             isFirstTimeSpawned = (boolean)entityData.get(data);
         }
 
-        if (DATA_TRAIN_LENGTH_AFTER_REJOIN.equals(data)) {
-            trainLengthAfterRejoin = (int)entityData.get(data);
-        }
         if (DATA_REPEL_ENTITY_ID.equals(data)) {
-            repelEntityId = (int)entityData.get(data);
+            entityId = (int)entityData.get(data);
         }
 
         if (DATA_REPEL_TICK.equals(data)) {
             repelTick = (int)entityData.get(data);
             if (level.isClientSide) {
-                entityToBeRepelled = (LivingEntity)level.getEntity(repelEntityId);
+                entityToBeRepelled = (LivingEntity)level.getEntity(entityId);
                 if (entityToBeRepelled != null) repelDir = horVec(entityToBeRepelled.position()).subtract(horVec(position()));
             }
         }
-        if (DATA_CLAMP_TICK.equals(data)) {
+        /*if (DATA_CLAMP_TICK.equals(data)) {
             clampTick = (int)entityData.get(data);
-        }
+        }*/
 
         if (DATA_BACKCART_EXISTS.equals(data) && isCommonActing()) {
             if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side
@@ -996,7 +960,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         compoundTag.putBoolean("isFindingBackCartAfterRejoin", hasBackCart());
         compoundTag.putBoolean("isFindingFrontCartAfterRejoin", hasFrontCart());
         compoundTag.putBoolean("isClamping", isClamping);
-        compoundTag.putInt("trainLengthAfterRejoin", trainLength());
         compoundTag.putInt("clampTick", clampTick);
 
         compoundTag.putBoolean("debug", debugMode); //TODO remove
@@ -1012,7 +975,6 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.set(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, compoundTag.getBoolean("isFindingBackCartAfterRejoin"));
         entityData.set(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, compoundTag.getBoolean("isFindingFrontCartAfterRejoin"));
         entityData.set(DATA_IS_CLAMPING, compoundTag.getBoolean("isClamping"));
-        entityData.set(DATA_TRAIN_LENGTH_AFTER_REJOIN, compoundTag.getInt("trainLengthAfterRejoin"));
         entityData.set(DATA_CLAMP_TICK, compoundTag.getInt("clampTick"));
     } //SERVER ONLY
 
@@ -1061,16 +1023,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             return tmpCart;
         } else return null;
-    }
-    public void trainIdRestoreAfterRejoin() {
-        trainLengthAfterRejoin = 1;
-        entityData.set(DATA_TRAIN_LENGTH_AFTER_REJOIN, 1);
-
-        AbstractCart tmp = this;
-        while (tmp.hasBackCart()) {
-            tmp = tmp.backCart;
-            tmp = tmp.getAndSpawnCartWithIdReplacement();
-        }
     }
 
     public AbstractCart getLocomotive() {
