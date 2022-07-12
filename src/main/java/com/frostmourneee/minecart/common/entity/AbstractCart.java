@@ -182,8 +182,10 @@ public abstract class AbstractCart extends AbstractMinecart {
             }
         }
         if (hasBackCart()) {
-            if (backLinkedTicks == backCart.frontLinkedTicks) {
-                backCart.posCorrectionToFrontCart();
+            AbstractCart tmp = this;
+            while (tmp.hasBackCart()) {
+                tmp = tmp.backCart;
+                if (tmp.frontLinkedTicks == tmp.frontCart.backLinkedTicks) tmp.posCorrectionToFrontCart();
             }
         }
     }
@@ -284,9 +286,10 @@ public abstract class AbstractCart extends AbstractMinecart {
         if (dist >= 1.625D && dist <= 1.65D || dist < 1.625D) {
             setDeltaMovement(Vec3.ZERO);
 
+            setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
             entityId = potentialFrontCart.getId();
-            clampTick = 9;
-            entityData.set(DATA_CLAMP_TICK, 9);
+            clampTick = 10;
+            entityData.set(DATA_CLAMP_TICK, 10);
         }
     }
     public void finalStageOfClamping() {
@@ -294,7 +297,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         futureFrontCart.connectBack(this);
         connectFront(futureFrontCart);
-        setPos(futureFrontCart.position().add(futureFrontCart.oppDirToVec3().scale(1.625D)));
 
         setIsClamping(false);
         cartSound(ccSoundInit.CART_CLAMP.get());
@@ -473,9 +475,6 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
     @Override
     public boolean canBeCollidedWith() {
-        /*
-         * NearZero needed because if cart is moving then it pushes off any other entities
-         */
         if (isClamped()) return isAlive();
         else return this instanceof LocomotiveEntity && ((LocomotiveEntity) this).hasFuel() && (zeroDeltaMovement() || zeroDelta()) && isAlive();
     }
@@ -593,9 +592,6 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         //hasBackCart
         if (isFirstCart()) {
-            /*if (hasBackCart() && getFirstPassenger() != null &&
-                cosOfVecs(horVec(getFirstPassenger().deltaMovement), horVec(position().subtract(backCart.position()))) <= 0 &&
-                deltaMovement.length() < 5 * ZERO_INDENT3) return;*/
             if (horVec(vec).length() < 1.0E-10) {
                 deltaMovement = Vec3.ZERO;
                 return;
@@ -943,12 +939,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         potentialFrontCart.setIsStoppedByNaturalSlowdown(true);
         potentialFrontCart.entityData.set(DATA_SERVER_POS, potentialFrontCart.position().toString());
 
-        if (distanceTo(potentialFrontCart) > 1.625D) {
-            setIsClamping(true);
-            /*connectFront(potentialFrontCart);
-            potentialFrontCart.connectBack(this);
-            posCorrectionToFrontCart();*/
-        }
+        if (distanceTo(potentialFrontCart) > 1.625D) setIsClamping(true);
         else if (distanceTo(potentialFrontCart) == 1.625D || !hasBackCart()) {
             connectFront(potentialFrontCart);
             potentialFrontCart.connectBack(this);
@@ -1056,9 +1047,6 @@ public abstract class AbstractCart extends AbstractMinecart {
                 if (entityToBeRepelled != null) repelDir = horVec(entityToBeRepelled.position()).subtract(horVec(position()));
             }
         }
-        /*if (DATA_CLAMP_TICK.equals(data)) {
-            clampTick = (int)entityData.get(data);
-        }*/
 
         if (DATA_BACKCART_EXISTS.equals(data) && isCommonActing()) {
             if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side
