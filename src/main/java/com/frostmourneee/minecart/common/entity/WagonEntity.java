@@ -41,7 +41,6 @@ public class WagonEntity extends AbstractCart {
 
         if (itemStack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
             setDebugMode(!debugMode); //TODO remove
-            customPrint(this, backCart, frontCart);
         }
 
         if (itemStack.getItem().equals(ccItemInit.CLAMP.get()) && isClamping) {
@@ -54,6 +53,16 @@ public class WagonEntity extends AbstractCart {
                 setIsClamping(false);
                 frontCart.resetBack();
                 resetFront();
+
+                if (!level.isClientSide) {
+                    entityData.set(DATA_NUMBER_BEFORE_EXIT, 1);
+
+                    AbstractCart tmp = this;
+                    while (tmp.hasBackCart()) {
+                        tmp = tmp.backCart;
+                        tmp.getEntityData().set(DATA_NUMBER_BEFORE_EXIT, tmp.frontCart.getEntityData().get(DATA_NUMBER_BEFORE_EXIT) + 1);
+                    }
+                }
             } else {
                 tryingToClamp();
             }

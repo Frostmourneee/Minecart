@@ -50,7 +50,7 @@ public class LocomotiveEntity extends AbstractCart {
     public double zPush = 0.0D;
 
     public static Ingredient INGREDIENT = Ingredient.of(Items.APPLE, Items.CHARCOAL);
-    public static final int FUEL_ADD_BY_CLICK = 90; //TODO change
+    public static final int FUEL_ADD_BY_CLICK = 1800; //TODO change
 
     @Override
     public void tick() {
@@ -101,7 +101,6 @@ public class LocomotiveEntity extends AbstractCart {
 
         if (itemstack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
             setDebugMode(!debugMode); //TODO remove
-            customPrint(this, backCart, frontCart);
         }
 
         return itemstack.getItem().equals(ccItemInit.CLAMP.get()) ? InteractionResult.PASS : InteractionResult.sidedSuccess(level.isClientSide);
