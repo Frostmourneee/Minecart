@@ -18,7 +18,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
-import static com.frostmourneee.minecart.Util.ccUtil.customPrint;
 
 public class WagonEntity extends AbstractCart {
 
@@ -41,7 +40,6 @@ public class WagonEntity extends AbstractCart {
 
         if (itemStack.getItem().equals(ccItemInit.DEBUG_ITEM.get())) {
             setDebugMode(!debugMode); //TODO remove
-            customPrint(this, backCart, frontCart);
         }
 
         if (itemStack.getItem().equals(ccItemInit.CLAMP.get()) && isClamping) {
@@ -52,6 +50,27 @@ public class WagonEntity extends AbstractCart {
             if (hasFrontCart()) {
                 cartSound(ccSoundInit.CART_UNCLAMP.get());
                 setIsClamping(false);
+
+                if (!level.isClientSide) {
+                    entityData.set(DATA_NUMBER_BEFORE_EXIT, 1);
+                    entityData.set(DATA_TRAIN_LENGTH, cartsBehind() + 1);
+                    entityData.set(DATA_FIRST_CART_ID, getId());
+
+                    AbstractCart tmp = this;
+                    while (tmp.hasBackCart()) {
+                        tmp = tmp.backCart;
+                        tmp.getEntityData().set(DATA_NUMBER_BEFORE_EXIT, tmp.frontCart.getEntityData().get(DATA_NUMBER_BEFORE_EXIT) + 1);
+                        tmp.getEntityData().set(DATA_TRAIN_LENGTH, cartsBehind() + 1);
+                        tmp.getEntityData().set(DATA_FIRST_CART_ID, getId());
+                    }
+
+                    tmp = this;
+                    while (tmp.hasFrontCart()) {
+                        tmp = tmp.frontCart;
+                        tmp.getEntityData().set(DATA_TRAIN_LENGTH, cartsAhead());
+                    }
+                }
+
                 frontCart.resetBack();
                 resetFront();
             } else {

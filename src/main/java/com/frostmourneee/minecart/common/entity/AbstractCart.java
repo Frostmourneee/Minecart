@@ -10,6 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.BlockTags;
@@ -55,7 +56,9 @@ public abstract class AbstractCart extends AbstractMinecart {
     public static final EntityDataAccessor<Boolean> DATA_IS_FIRST_TIME_SPAWNED = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Integer> DATA_REPEL_TICK = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
-    public static final EntityDataAccessor<Integer> DATA_CLAMP_TICK = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> DATA_FIRST_CART_ID = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> DATA_TRAIN_LENGTH = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> DATA_NUMBER_BEFORE_EXIT = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> DATA_REPEL_ENTITY_ID = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<String> DATA_SERVER_POS = SynchedEntityData.defineId(AbstractCart.class, EntityDataSerializers.STRING);
 
@@ -79,8 +82,8 @@ public abstract class AbstractCart extends AbstractMinecart {
     public int repelTick = 0;
     public int clampTick = 0;
     public int entityId = 0;
-    public int frontLinkedTicks = 0;
-    public int backLinkedTicks = 0;
+    public int linkedTicksFront = 0;
+    public int linkedTicksBack = 0;
 
     public boolean debugMode = false; //TODO remove
 
@@ -96,7 +99,7 @@ public abstract class AbstractCart extends AbstractMinecart {
         fieldsInitAndSidesSync();
 
         if (isFindingBackCartAfterRejoin || isFindingFrontCartAfterRejoin) restoreCartsRelations();
-        if (isClamping && clampTick == 0 && readyAfterRejoin()) clampingToFrontCart();
+        if (isClamping && readyAfterRejoin()) clampingToFrontCart();
         if (repelTick == 10 && !entityToBeRepelled.isPassenger() && readyAfterRejoin()) repel();
         if (clampTick == 1) finalStageOfClamping();
         collisionProcessing();
@@ -173,11 +176,11 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     }
     public void linkedMovement() {
-        if (hasFrontCart()) frontLinkedTicks++;
-        if (hasBackCart()) backLinkedTicks++;
+        if (hasFrontCart()) linkedTicksFront++;
+        if (hasBackCart()) linkedTicksBack++;
 
         if (hasFrontCart()) {
-            if (frontCart.backLinkedTicks == frontLinkedTicks) {
+            if (frontCart.linkedTicksBack == linkedTicksFront) {
                 posCorrectionToFrontCart();
             }
         }
@@ -185,7 +188,7 @@ public abstract class AbstractCart extends AbstractMinecart {
             AbstractCart tmp = this;
             while (tmp.hasBackCart()) {
                 tmp = tmp.backCart;
-                if (tmp.frontLinkedTicks == tmp.frontCart.backLinkedTicks) tmp.posCorrectionToFrontCart();
+                if (tmp.linkedTicksFront == tmp.frontCart.linkedTicksBack) tmp.posCorrectionToFrontCart();
             }
         }
     }
@@ -219,9 +222,17 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
         if (clampTick != 0) {
             clampTick--;
-            if (clampTick == 0) entityData.set(DATA_CLAMP_TICK, 0);
         }
         if (!isFirstCart()) repellingEntities.clear();
+        if (isFirstCart() && trainLength() == entityData.get(DATA_TRAIN_LENGTH) && entityData.get(DATA_FIRST_CART_ID) != getId()) {
+            entityData.set(DATA_FIRST_CART_ID, getId());
+
+            AbstractCart tmp = this;
+            while (tmp.hasBackCart()) {
+                tmp = tmp.backCart;
+                tmp.entityData.set(DATA_FIRST_CART_ID, getId());
+            }
+        }
     }
 
     public void clampingToFrontCart() {
@@ -288,18 +299,38 @@ public abstract class AbstractCart extends AbstractMinecart {
 
             setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
             entityId = potentialFrontCart.getId();
-            clampTick = 10;
-            entityData.set(DATA_CLAMP_TICK, 10);
+
+            if (!level.isClientSide && clampTick == 0) clampTick = 10;
         }
     }
     public void finalStageOfClamping() {
         AbstractCart futureFrontCart = (AbstractCart) level.getEntity(entityId);
 
-        futureFrontCart.connectBack(this);
-        connectFront(futureFrontCart);
+        if (futureFrontCart != null) {
+            if (!level.isClientSide) entityData.set(DATA_NUMBER_BEFORE_EXIT, futureFrontCart.entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1);
+            entityData.set(DATA_TRAIN_LENGTH, futureFrontCart.trainLength() + trainLength());
+            entityData.set(DATA_FIRST_CART_ID, futureFrontCart.getFirstCart().getId());
 
-        setIsClamping(false);
-        cartSound(ccSoundInit.CART_CLAMP.get());
+            AbstractCart tmp = this;
+            while (tmp.hasBackCart()) {
+                tmp = tmp.backCart;
+                if (!level.isClientSide) tmp.entityData.set(DATA_NUMBER_BEFORE_EXIT, tmp.frontCart.entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1);
+                tmp.entityData.set(DATA_TRAIN_LENGTH, futureFrontCart.trainLength() + trainLength());
+                tmp.entityData.set(DATA_FIRST_CART_ID, futureFrontCart.getFirstCart().getId());
+            }
+
+            futureFrontCart.entityData.set(DATA_TRAIN_LENGTH, futureFrontCart.trainLength() + trainLength());
+            tmp = futureFrontCart;
+            while (tmp.hasFrontCart()) {
+                tmp = tmp.frontCart;
+                tmp.getEntityData().set(DATA_TRAIN_LENGTH, futureFrontCart.trainLength() + trainLength());
+            }
+
+            futureFrontCart.connectBack(this);
+            connectFront(futureFrontCart);
+            setIsClamping(false);
+            cartSound(ccSoundInit.CART_CLAMP.get());
+        } else clampingFail();
     }
     public void clampingFail() {
         setDeltaMovement(getDeltaMovement().scale(0.2D));
@@ -540,26 +571,26 @@ public abstract class AbstractCart extends AbstractMinecart {
     public void resetFront() {
         setHasFrontCart(false);
         frontCart = null;
-        frontLinkedTicks = 0;
+        linkedTicksFront = 0;
     }
     public void resetBack() {
         setHasBackCart(false);
         backCart = null;
-        backLinkedTicks = 0;
+        linkedTicksBack = 0;
     }
 
     public void connectFront(AbstractCart cart) {
         if (!cart.equals(frontCart)) {
             frontCart = cart;
             setHasFrontCart(true);
-            frontLinkedTicks = 0;
+            linkedTicksFront = 0;
         }
     }
     public void connectBack(AbstractCart cart) {
         if (!cart.equals(backCart)) {
             backCart = cart;
             setHasBackCart(true);
-            backLinkedTicks = 0;
+            linkedTicksBack = 0;
         }
     }
 
@@ -941,6 +972,25 @@ public abstract class AbstractCart extends AbstractMinecart {
 
         if (distanceTo(potentialFrontCart) > 1.625D) setIsClamping(true);
         else if (distanceTo(potentialFrontCart) == 1.625D || !hasBackCart()) {
+            if (!level.isClientSide) entityData.set(DATA_NUMBER_BEFORE_EXIT, potentialFrontCart.entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1);
+            entityData.set(DATA_TRAIN_LENGTH, potentialFrontCart.trainLength() + trainLength());
+            entityData.set(DATA_FIRST_CART_ID, potentialFrontCart.getFirstCart().getId());
+
+            AbstractCart tmp = this;
+            while (tmp.hasBackCart()) {
+                tmp = tmp.backCart;
+                if (!level.isClientSide) tmp.entityData.set(DATA_NUMBER_BEFORE_EXIT, tmp.frontCart.entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1);
+                tmp.entityData.set(DATA_TRAIN_LENGTH, potentialFrontCart.trainLength() + trainLength());
+                tmp.entityData.set(DATA_FIRST_CART_ID, potentialFrontCart.getFirstCart().getId());
+            }
+
+            potentialFrontCart.entityData.set(DATA_TRAIN_LENGTH, potentialFrontCart.trainLength() + trainLength());
+            tmp = potentialFrontCart;
+            while (tmp.hasFrontCart()) {
+                tmp = tmp.frontCart;
+                tmp.getEntityData().set(DATA_TRAIN_LENGTH, trainLength());
+            }
+
             connectFront(potentialFrontCart);
             potentialFrontCart.connectBack(this);
             setPos(potentialFrontCart.position().add(potentialFrontCart.oppDirToVec3().scale(1.625D)));
@@ -981,13 +1031,30 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
     } //in survival  //SERVER ONLY
     public void death() {
-        if (backCart != null) {
-            backCart.setIsClamping(false);
+        if (hasBackCart()) {
+            if (!level.isClientSide) {
+                entityData.set(DATA_NUMBER_BEFORE_EXIT, 0);
+
+                AbstractCart tmp = this;
+                while (tmp.hasBackCart()) {
+                    tmp = tmp.backCart;
+                    tmp.entityData.set(DATA_NUMBER_BEFORE_EXIT, tmp.frontCart.getEntityData().get(DATA_NUMBER_BEFORE_EXIT) + 1);
+                    tmp.entityData.set(DATA_TRAIN_LENGTH, cartsBehind());
+                    tmp.entityData.set(DATA_FIRST_CART_ID, backCart.getId());
+                }
+
+                tmp = this;
+                while (tmp.hasFrontCart()) {
+                    tmp = tmp.frontCart;
+                    tmp.getEntityData().set(DATA_TRAIN_LENGTH, cartsAhead());
+                }
+            }
+
             backCart.resetFront();
             resetBack();
         }
 
-        if (frontCart != null) {
+        if (hasFrontCart()) {
             frontCart.resetBack();
             resetFront();
         }
@@ -1004,6 +1071,40 @@ public abstract class AbstractCart extends AbstractMinecart {
     }
 
     @Override
+    public void startSeenByPlayer(@NotNull ServerPlayer pPlayer) {
+        if (entityData.get(DATA_BACKCART_EXISTS) && !hasBackCart()) {
+            ArrayList<AbstractCart> nearCarts = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, getAABBBetweenBlocks(
+                    new BlockPos(position()).relative(Direction.NORTH, 10).relative(Direction.WEST, 10),
+                    new BlockPos(position()).relative(Direction.SOUTH, 10).relative(Direction.EAST, 10)));
+            nearCarts.removeIf(cart -> cart.entityData.get(DATA_NUMBER_BEFORE_EXIT) != entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1);
+            int trainId = entityData.get(DATA_FIRST_CART_ID);
+            nearCarts.removeIf(cart -> trainId != cart.entityData.get(DATA_FIRST_CART_ID));
+
+            if (!nearCarts.isEmpty()) {
+                connectBack(nearCarts.get(0));
+                nearCarts.get(0).connectFront(this);
+            }
+        }
+
+        if (entityData.get(DATA_FRONTCART_EXISTS) && !hasFrontCart()) {
+            ArrayList<AbstractCart> nearCarts = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, getAABBBetweenBlocks(
+                    new BlockPos(position()).relative(Direction.NORTH, 10).relative(Direction.WEST, 10),
+                    new BlockPos(position()).relative(Direction.SOUTH, 10).relative(Direction.EAST, 10)));
+            nearCarts.removeIf(cart -> cart.entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1 != entityData.get(DATA_NUMBER_BEFORE_EXIT));
+            int trainId = entityData.get(DATA_FIRST_CART_ID);
+            nearCarts.removeIf(cart -> trainId != cart.entityData.get(DATA_FIRST_CART_ID));
+
+            if (!nearCarts.isEmpty()) {
+                connectFront(nearCarts.get(0));
+                nearCarts.get(0).connectBack(this);
+            }
+        }
+
+        if (hasBackCart()) linkedTicksBack = backCart.linkedTicksFront = 0;
+        if (hasFrontCart()) linkedTicksFront = frontCart.linkedTicksBack = 0;
+    }
+
+    @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
 
@@ -1016,7 +1117,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.define(DATA_IS_STOPPED_BY_NATURAL_SLOWDOWN, false);
         entityData.define(DATA_REPEL_TICK, 0);
         entityData.define(DATA_REPEL_ENTITY_ID, 0);
-        entityData.define(DATA_CLAMP_TICK, 0);
+        entityData.define(DATA_FIRST_CART_ID, getId());
+        entityData.define(DATA_TRAIN_LENGTH, 1);
+        entityData.define(DATA_NUMBER_BEFORE_EXIT, 1);
         entityData.define(DATA_SERVER_POS, "(0, 0, 0)");
 
         entityData.define(DATA_DEBUG_MODE, false); //TODO remove
@@ -1024,10 +1127,10 @@ public abstract class AbstractCart extends AbstractMinecart {
     @Override
     public void onSyncedDataUpdated(@NotNull EntityDataAccessor<?> data) {
         if (DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN.equals(data)) {
-            isFindingFrontCartAfterRejoin = (boolean)entityData.get(data);
+            if ((boolean)entityData.get(data)) isFindingFrontCartAfterRejoin = true;
         }
         if (DATA_IS_FINDING_BACK_CART_AFTER_REJOIN.equals(data)) {
-            isFindingBackCartAfterRejoin = (boolean)entityData.get(data);
+            if ((boolean)entityData.get(data)) isFindingBackCartAfterRejoin = true;
         }
         if (DATA_IS_CLAMPING.equals(data)) {
             isClamping = (boolean)entityData.get(data);
@@ -1049,15 +1152,18 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
 
         if (DATA_BACKCART_EXISTS.equals(data) && isCommonActing()) {
-            if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side
+            if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side and after clampTick == 1 on server side
                 if (!hasBackCart()) {
-                    AbstractCart potentialBackCart = findingNearestCartInArea(getAABBBetweenBlocks(
-                            new BlockPos(position()).relative(getDirection().getOpposite()).relative(getDirection().getClockWise()),
-                            new BlockPos(position()).relative(getDirection().getOpposite(), 2).relative(getDirection().getCounterClockWise()))
-                    );
-                    if (potentialBackCart != null && !potentialBackCart.isClamping) {
-                        connectBack(potentialBackCart);
-                        potentialBackCart.connectFront(this);
+                    ArrayList<AbstractCart> nearCarts = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, getAABBBetweenBlocks(
+                            new BlockPos(position()).relative(Direction.NORTH, 10).relative(Direction.WEST, 10),
+                            new BlockPos(position()).relative(Direction.SOUTH, 10).relative(Direction.EAST, 10)));
+                    nearCarts.removeIf(cart -> cart.entityData.get(DATA_NUMBER_BEFORE_EXIT) != entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1);
+                    int trainId = entityData.get(DATA_FIRST_CART_ID);
+                    nearCarts.removeIf(cart -> trainId != cart.entityData.get(DATA_FIRST_CART_ID));
+
+                    if (!nearCarts.isEmpty()) {
+                        connectBack(nearCarts.get(0));
+                        nearCarts.get(0).connectFront(this);
                     }
                 }
             } else { //Called after death() method
@@ -1066,15 +1172,18 @@ public abstract class AbstractCart extends AbstractMinecart {
         }
 
         if (DATA_FRONTCART_EXISTS.equals(data) && isCommonActing()) {
-            if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side
+            if ((boolean)entityData.get(data)) { //Called after cart's respawn on client side and after clampTick == 1 on server side
                 if (!hasFrontCart()) {
-                    AbstractCart potentialFrontCart = findingNearestCartInArea(getAABBBetweenBlocks(
-                            new BlockPos(position()).relative(getDirection()).relative(getDirection().getClockWise()),
-                            new BlockPos(position()).relative(getDirection(), 2).relative(getDirection().getCounterClockWise()))
-                    );
-                    if (potentialFrontCart != null) {
-                        connectFront(potentialFrontCart);
-                        potentialFrontCart.connectBack(this);
+                    ArrayList<AbstractCart> nearCarts = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, getAABBBetweenBlocks(
+                            new BlockPos(position()).relative(Direction.NORTH, 10).relative(Direction.WEST, 10),
+                            new BlockPos(position()).relative(Direction.SOUTH, 10).relative(Direction.EAST, 10)));
+                    nearCarts.removeIf(cart -> cart.entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1 != entityData.get(DATA_NUMBER_BEFORE_EXIT));
+                    int trainId = entityData.get(DATA_FIRST_CART_ID);
+                    nearCarts.removeIf(cart -> trainId != cart.entityData.get(DATA_FIRST_CART_ID));
+
+                    if (!nearCarts.isEmpty()) {
+                        connectFront(nearCarts.get(0));
+                        nearCarts.get(0).connectBack(this);
                     }
                 }
             } else { //Called after death() method
@@ -1091,7 +1200,7 @@ public abstract class AbstractCart extends AbstractMinecart {
                     posArray.add(Double.parseDouble(str));
 
                 Vec3 pos = new Vec3(posArray.get(0), posArray.get(1), posArray.get(2));
-                if (nearZero(horVec(pos).subtract(horVec(position())), 5.0E-2)) {
+                if (nearZero(horVec(pos).subtract(horVec(position())), 5 * ZERO_INDENT2)) {
                     setPos(pos);
                 }
             }
@@ -1112,7 +1221,9 @@ public abstract class AbstractCart extends AbstractMinecart {
         compoundTag.putBoolean("isFindingBackCartAfterRejoin", hasBackCart());
         compoundTag.putBoolean("isFindingFrontCartAfterRejoin", hasFrontCart());
         compoundTag.putBoolean("isClamping", isClamping);
-        compoundTag.putInt("clampTick", clampTick);
+        compoundTag.putInt("firstCartId", entityData.get(DATA_FIRST_CART_ID));
+        compoundTag.putInt("trainLength", entityData.get(DATA_TRAIN_LENGTH));
+        compoundTag.putInt("numberBeforeExit", entityData.get(DATA_NUMBER_BEFORE_EXIT));
 
         compoundTag.putBoolean("debug", debugMode); //TODO remove
     } //SERVER ONLY
@@ -1127,54 +1238,52 @@ public abstract class AbstractCart extends AbstractMinecart {
         entityData.set(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, compoundTag.getBoolean("isFindingBackCartAfterRejoin"));
         entityData.set(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, compoundTag.getBoolean("isFindingFrontCartAfterRejoin"));
         entityData.set(DATA_IS_CLAMPING, compoundTag.getBoolean("isClamping"));
-        entityData.set(DATA_CLAMP_TICK, compoundTag.getInt("clampTick"));
+        entityData.set(DATA_FIRST_CART_ID, compoundTag.getInt("firstCartId"));
+        entityData.set(DATA_NUMBER_BEFORE_EXIT, compoundTag.getInt("numberBeforeExit"));
+        entityData.set(DATA_TRAIN_LENGTH, compoundTag.getInt("trainLength"));
     } //SERVER ONLY
 
     public void restoreCartsRelations() {
         if (hasBackCart()) isFindingBackCartAfterRejoin = false;
         if (hasFrontCart()) isFindingFrontCartAfterRejoin = false;
+
         if (backCart == null && isFindingBackCartAfterRejoin) {
-            AbstractCart potentialBackCart = findingNearestCartInArea(getAABBBetweenBlocks(
-                    new BlockPos(position()).relative(getDirection().getOpposite()).relative(getDirection().getClockWise()),
-                    new BlockPos(position()).relative(getDirection().getOpposite(), 2).relative(getDirection().getCounterClockWise()))
-            );
-            if (potentialBackCart != null) {
-                potentialBackCart.connectFront(this);
-                connectBack(potentialBackCart);
+            ArrayList<AbstractCart> nearCarts = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, getAABBBetweenBlocks(
+                    new BlockPos(position()).relative(Direction.NORTH, 10).relative(Direction.WEST, 10),
+                    new BlockPos(position()).relative(Direction.SOUTH, 10).relative(Direction.EAST, 10)));
+            nearCarts.removeIf(cart -> cart.entityData.get(DATA_NUMBER_BEFORE_EXIT) != entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1);
+            int trainId = entityData.get(DATA_FIRST_CART_ID);
+            nearCarts.removeIf(cart -> trainId != cart.entityData.get(DATA_FIRST_CART_ID));
+
+            if (!nearCarts.isEmpty()) {
+                nearCarts.get(0).connectFront(this);
+                connectBack(nearCarts.get(0));
 
                 isFindingBackCartAfterRejoin = false;
-                potentialBackCart.isFindingFrontCartAfterRejoin = false;
+                entityData.set(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, false);
+                nearCarts.get(0).isFindingFrontCartAfterRejoin = false;
+                nearCarts.get(0).entityData.set(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
             }
         }
 
         if (frontCart == null && isFindingFrontCartAfterRejoin) {
-            AbstractCart potentialFrontCart = findingNearestCartInArea(getAABBBetweenBlocks(
-                    new BlockPos(position()).relative(getDirection()).relative(getDirection().getClockWise()),
-                    new BlockPos(position()).relative(getDirection(), 2).relative(getDirection().getCounterClockWise()))
-            );
-            if (potentialFrontCart != null) {
-                potentialFrontCart.connectBack(this);
-                connectFront(potentialFrontCart);
+            ArrayList<AbstractCart> nearCarts = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, getAABBBetweenBlocks(
+                    new BlockPos(position()).relative(Direction.NORTH, 10).relative(Direction.WEST, 10),
+                    new BlockPos(position()).relative(Direction.SOUTH, 10).relative(Direction.EAST, 10)));
+            nearCarts.removeIf(cart -> cart.entityData.get(DATA_NUMBER_BEFORE_EXIT) + 1 != entityData.get(DATA_NUMBER_BEFORE_EXIT));
+            int trainId = entityData.get(DATA_FIRST_CART_ID);
+            nearCarts.removeIf(cart -> trainId != cart.entityData.get(DATA_FIRST_CART_ID));
+
+            if (!nearCarts.isEmpty()) {
+                nearCarts.get(0).connectBack(this);
+                connectFront(nearCarts.get(0));
 
                 isFindingFrontCartAfterRejoin = false;
-                potentialFrontCart.isFindingBackCartAfterRejoin = false;
+                entityData.set(DATA_IS_FINDING_FRONT_CART_AFTER_REJOIN, false);
+                nearCarts.get(0).isFindingBackCartAfterRejoin = false;
+                nearCarts.get(0).entityData.set(DATA_IS_FINDING_BACK_CART_AFTER_REJOIN, false);
             }
         }
-    }
-    public AbstractCart findingNearestCartInArea(AABB areaOfSearch) {
-        ArrayList<AbstractCart> rangeCart = (ArrayList<AbstractCart>) level.getEntitiesOfClass(AbstractCart.class, areaOfSearch);
-        rangeCart.removeIf(cart -> cart == this);
-
-        if (!rangeCart.isEmpty()) {
-            AbstractCart tmpCart = rangeCart.get(0);
-            for (int i = 1; i < rangeCart.size(); i++) { //SEARCHING FOR THE NEAREST
-                if (rangeCart.get(i).distanceTo(this) < tmpCart.distanceTo(this)) {
-                    tmpCart = rangeCart.get(i);
-                }
-            }
-
-            return tmpCart;
-        } else return null;
     }
 
     public AbstractCart getLocomotive() {
